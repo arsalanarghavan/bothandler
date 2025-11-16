@@ -14,6 +14,9 @@ Route::get('/bots/{id}', [ProxyBotController::class, 'show']);
 Route::post('/bots/{id}/deploy', [ProxyBotController::class, 'deploy']);
 Route::get('/bots/{id}/deployments', [ProxyBotController::class, 'deployments']);
 Route::get('/deployments/{deploymentId}', [ProxyBotController::class, 'deployment']);
+Route::delete('/bots/{id}', [ProxyBotController::class, 'destroy']);
+Route::post('/bots/update-all', [ProxyBotController::class, 'updateAll']);
+Route::delete('/bots', [ProxyBotController::class, 'destroyAll']);
 
 Route::get('/setup/status', [SetupController::class, 'status']);
 Route::post('/setup/complete', [SetupController::class, 'complete']);

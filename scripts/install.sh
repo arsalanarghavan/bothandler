@@ -25,6 +25,6 @@ docker-compose pull || true
 docker-compose build
 docker-compose up -d
 
-echo "Installation finished. Point your domain to this server and open the dashboard domain in the browser to complete setup."
+echo "Installation finished. Now open your dashboard domain in the browser; the setup wizard will ask for the domain and configure everything (including SSL) automatically."
 
 

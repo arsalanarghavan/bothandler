@@ -27,6 +27,7 @@ class SetupController extends Controller
 
         $validated = $request->validate([
             'dashboard_name' => ['required', 'string', 'max:255'],
+            'dashboard_domain' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'username' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -41,6 +42,11 @@ class SetupController extends Controller
         Setting::updateOrCreate(
             ['key' => 'dashboard_name'],
             ['value' => $validated['dashboard_name']]
+        );
+
+        Setting::updateOrCreate(
+            ['key' => 'dashboard_domain'],
+            ['value' => $validated['dashboard_domain']]
         );
 
         return response()->json([

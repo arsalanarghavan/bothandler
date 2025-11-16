@@ -53,6 +53,24 @@ class BotManagerClient
         $response = $this->client->get("deployments/{$deploymentId}");
         return json_decode((string) $response->getBody(), true)['data'] ?? [];
     }
+
+    public function deleteBot(int $id): array
+    {
+        $response = $this->client->delete("bots/{$id}");
+        return json_decode((string) $response->getBody(), true);
+    }
+
+    public function updateAll(): array
+    {
+        $response = $this->client->post('bots/update-all');
+        return json_decode((string) $response->getBody(), true)['data'] ?? [];
+    }
+
+    public function deleteAll(): array
+    {
+        $response = $this->client->delete('bots');
+        return json_decode((string) $response->getBody(), true);
+    }
 }
 
 

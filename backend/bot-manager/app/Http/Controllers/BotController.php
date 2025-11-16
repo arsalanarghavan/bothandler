@@ -65,6 +65,50 @@ class BotController extends Controller
             'data' => $deployments,
         ]);
     }
+
+    public function destroy(Bot $bot): JsonResponse
+    {
+        // Best-effort: stop/remove related container by convention
+        $serviceName = 'service-' . $bot->id;
+        @shell_exec(sprintf('docker rm -f %s >/dev/null 2>&1', escapeshellarg($serviceName)));
+
+        $bot->delete();
+
+        return response()->json([
+            'status' => 'deleted',
+        ]);
+    }
+
+    public function updateAll(BotDeploymentService $deploymentService): JsonResponse
+    {
+        $bots = Bot::all();
+        $deployments = [];
+
+        foreach ($bots as $bot) {
+            /** @var Deployment $deployment */
+            $deployment = $deploymentService->deployAsync($bot);
+            $deployments[] = $deployment;
+        }
+
+        return response()->json([
+            'data' => $deployments,
+        ], 202);
+    }
+
+    public function destroyAll(): JsonResponse
+    {
+        $bots = Bot::all();
+
+        foreach ($bots as $bot) {
+            $serviceName = 'service-' . $bot->id;
+            @shell_exec(sprintf('docker rm -f %s >/dev/null 2>&1', escapeshellarg($serviceName)));
+            $bot->delete();
+        }
+
+        return response()->json([
+            'status' => 'deleted',
+        ]);
+    }
 }
 
 

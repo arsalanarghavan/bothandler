@@ -7,6 +7,10 @@
         <input v-model="form.dashboard_name" required />
       </div>
       <div>
+        <label>دامنه داشبورد (مثال: dashboard.example.com)</label>
+        <input v-model="form.dashboard_domain" required />
+      </div>
+      <div>
         <label>ایمیل ادمین</label>
         <input v-model="form.email" type="email" required />
       </div>
@@ -39,6 +43,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 const form = ref({
   dashboard_name: '',
+  dashboard_domain: '',
   email: '',
   username: '',
   password: '',

@@ -63,6 +63,29 @@ class ProxyBotController extends Controller
             'data' => $client->deployment($deploymentId),
         ]);
     }
+
+    public function destroy(int $id, BotManagerClient $client): JsonResponse
+    {
+        $result = $client->deleteBot($id);
+
+        return response()->json($result);
+    }
+
+    public function updateAll(BotManagerClient $client): JsonResponse
+    {
+        $deployments = $client->updateAll();
+
+        return response()->json([
+            'data' => $deployments,
+        ], 202);
+    }
+
+    public function destroyAll(BotManagerClient $client): JsonResponse
+    {
+        $result = $client->deleteAll();
+
+        return response()->json($result);
+    }
 }
 
 
