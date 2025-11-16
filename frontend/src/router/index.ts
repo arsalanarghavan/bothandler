@@ -28,15 +28,24 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  // Check if app is installed
-  const installed = await authStore.checkInstalled();
-  
-  if (!installed && to.path !== '/setup') {
-    return next('/setup');
-  }
-  
-  if (installed && to.path === '/setup') {
-    return next('/login');
+  // Check if app is installed (only for non-public routes)
+  if (!to.meta.public) {
+    try {
+      const installed = await authStore.checkInstalled();
+      
+      if (!installed && to.path !== '/setup') {
+        return next('/setup');
+      }
+      
+      if (installed && to.path === '/setup') {
+        return next('/login');
+      }
+    } catch (error) {
+      // If check fails, allow access to setup
+      if (to.path !== '/setup') {
+        return next('/setup');
+      }
+    }
   }
   
   // Check authentication for protected routes
