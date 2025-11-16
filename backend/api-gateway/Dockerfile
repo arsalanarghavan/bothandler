@@ -20,6 +20,6 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 80
 
-CMD [\"supervisord\", \"-c\", \"/etc/supervisord.conf\"]
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
 
 
