@@ -1,13 +1,16 @@
 <template>
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-xl-8">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">{{ $t('setup.title') }}</h3>
-          </div>
-          <div class="card-body">
-            <form class="wizard wizard-tab horizontal" @submit.prevent="submit" id="setup-wizard">
+  <div class="page">
+    <div class="main-content app-content">
+      <div class="side-app">
+        <div class="main-container container-fluid">
+          <div class="row justify-content-center">
+            <div class="col-xl-8">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">{{ $t('setup.title') }}</h3>
+                </div>
+                <div class="card-body">
+                  <form class="wizard wizard-tab horizontal" @submit.prevent="submit" id="setup-wizard">
               <aside class="wizard-content container">
                 <!-- Step 1: Dashboard Info -->
                 <div class="wizard-step active" data-title="اطلاعات داشبورد">
@@ -101,7 +104,10 @@
                   </span>
                 </button>
               </div>
-            </form>
+                  </form>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -175,10 +181,30 @@ const submit = async () => {
 
 onMounted(() => {
   updateWizardSteps();
+  
+  // Initialize vanilla-wizard if available
+  if (typeof window !== 'undefined' && (window as any).VanillaWizard) {
+    const wizardElement = document.getElementById('setup-wizard');
+    if (wizardElement) {
+      try {
+        new (window as any).VanillaWizard(wizardElement);
+      } catch (e) {
+        console.warn('VanillaWizard initialization failed:', e);
+      }
+    }
+  }
+  
+  // Also try to trigger form-wizard-init if it exists
+  setTimeout(() => {
+    if (typeof (window as any).formWizardInit === 'function') {
+      (window as any).formWizardInit();
+    }
+  }, 100);
 });
 </script>
 
-<style scoped>
+<style>
+/* Remove scoped to allow global styles to apply */
 .wizard-step {
   display: none;
 }
@@ -193,5 +219,16 @@ onMounted(() => {
   font-weight: 600;
   margin-bottom: 1rem;
   color: var(--primary-color);
+}
+
+/* Ensure page has proper background */
+.page {
+  min-height: 100vh;
+  background-color: #f5f7fb;
+}
+
+.main-content {
+  margin-top: 0;
+  padding-top: 2rem;
 }
 </style>

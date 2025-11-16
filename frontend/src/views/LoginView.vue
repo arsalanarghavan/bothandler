@@ -1,21 +1,35 @@
 <template>
-  <div class="login-page">
-    <div class="login-container">
-      <h1>ورود به داشبورد</h1>
-      <form @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label>ایمیل</label>
-          <input v-model="form.email" type="email" required />
+  <div class="page">
+    <div class="main-content app-content">
+      <div class="side-app">
+        <div class="main-container container-fluid">
+          <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">ورود به داشبورد</h3>
+                </div>
+                <div class="card-body">
+                  <form @submit.prevent="handleLogin">
+                    <div class="mb-3">
+                      <label class="form-label">ایمیل</label>
+                      <input v-model="form.email" type="email" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">رمز عبور</label>
+                      <input v-model="form.password" type="password" class="form-control" required />
+                    </div>
+                    <div v-if="error" class="alert alert-danger">{{ error }}</div>
+                    <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+                      {{ loading ? 'در حال ورود...' : 'ورود' }}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>رمز عبور</label>
-          <input v-model="form.password" type="password" required />
-        </div>
-        <div v-if="error" class="error">{{ error }}</div>
-        <button type="submit" :disabled="loading">
-          {{ loading ? 'در حال ورود...' : 'ورود' }}
-        </button>
-      </form>
+      </div>
     </div>
   </div>
 </template>
@@ -50,58 +64,15 @@ const handleLogin = async () => {
 };
 </script>
 
-<style scoped>
-.login-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+<style>
+.page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background-color: #f5f7fb;
 }
 
-.login-container {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.error {
-  color: red;
-  margin-bottom: 1rem;
-}
-
-button {
-  width: 100%;
-  padding: 0.75rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.main-content {
+  margin-top: 0;
+  padding-top: 2rem;
 }
 </style>
 
