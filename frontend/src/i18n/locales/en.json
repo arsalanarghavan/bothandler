@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "bots": "Services",
+    "services": "Services",
+    "deployBot": "Deploy Service",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Server Overview",
+    "totalContainers": "Total containers",
+    "runningContainers": "Running containers",
+    "stoppedContainers": "Stopped containers"
+  }
+}
+
+

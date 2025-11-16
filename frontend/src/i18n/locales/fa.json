@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "dashboard": "داشبورد",
+    "bots": "سرویس‌ها",
+    "services": "سرویس‌ها",
+    "deployBot": "نصب سرویس جدید",
+    "settings": "تنظیمات"
+  },
+  "dashboard": {
+    "title": "نمای کلی سرور",
+    "totalContainers": "کل کانتینرها",
+    "runningContainers": "کانتینرهای در حال اجرا",
+    "stoppedContainers": "کانتینرهای متوقف شده"
+  }
+}
+
+
