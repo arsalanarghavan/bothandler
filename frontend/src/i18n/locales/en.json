@@ -1,16 +1,50 @@
 {
   "nav": {
+    "main": "Main",
     "dashboard": "Dashboard",
     "bots": "Services",
     "services": "Services",
     "deployBot": "Deploy Service",
+    "deployService": "Deploy Service",
+    "monitoring": "Monitoring",
     "settings": "Settings"
+  },
+  "header": {
+    "search": "Search",
+    "notifications": "Notifications",
+    "unread": "unread",
+    "viewAll": "View All",
+    "noNotifications": "No notifications",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "footer": {
+    "designWith": "Designed with",
+    "by": "by"
   },
   "dashboard": {
     "title": "Server Overview",
     "totalContainers": "Total containers",
     "runningContainers": "Running containers",
     "stoppedContainers": "Stopped containers"
+  },
+  "setup": {
+    "title": "Initial Setup",
+    "dashboardName": "Dashboard Name",
+    "dashboardDomain": "Dashboard Domain",
+    "domainHint": "Example: dashboard.example.com",
+    "adminEmail": "Admin Email",
+    "adminUsername": "Admin Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "previous": "Previous",
+    "next": "Next",
+    "installing": "Installing...",
+    "completeInstallation": "Complete Installation",
+    "readyToInstall": "Ready to Install",
+    "confirmMessage": "Please review the information and then complete the installation.",
+    "passwordMismatch": "Password and confirmation do not match",
+    "error": "Installation error"
   }
 }
 

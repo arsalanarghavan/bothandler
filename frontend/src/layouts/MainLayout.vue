@@ -1,11 +1,13 @@
 <template>
   <div class="page">
     <AppHeader />
-    <div class="page-content">
-      <AppSidebar />
-      <main class="main-content">
-        <slot />
-      </main>
+    <AppSidebar />
+    <div class="main-content app-content">
+      <div class="side-app">
+        <div class="main-container container-fluid">
+          <slot />
+        </div>
+      </div>
     </div>
     <AppFooter />
   </div>

@@ -1,16 +1,50 @@
 {
   "nav": {
+    "main": "اصلی",
     "dashboard": "داشبورد",
     "bots": "سرویس‌ها",
     "services": "سرویس‌ها",
     "deployBot": "نصب سرویس جدید",
+    "deployService": "نصب سرویس جدید",
+    "monitoring": "نظارت",
     "settings": "تنظیمات"
+  },
+  "header": {
+    "search": "جستجو",
+    "notifications": "هشدارها",
+    "unread": "خوانده نشده",
+    "viewAll": "مشاهده همه",
+    "noNotifications": "هشداری وجود ندارد",
+    "settings": "تنظیمات",
+    "logout": "خروج"
+  },
+  "footer": {
+    "designWith": "طراحی با",
+    "by": "توسط"
   },
   "dashboard": {
     "title": "نمای کلی سرور",
     "totalContainers": "کل کانتینرها",
     "runningContainers": "کانتینرهای در حال اجرا",
     "stoppedContainers": "کانتینرهای متوقف شده"
+  },
+  "setup": {
+    "title": "نصب اولیه داشبورد",
+    "dashboardName": "نام داشبورد",
+    "dashboardDomain": "دامنه داشبورد",
+    "domainHint": "مثال: dashboard.example.com",
+    "adminEmail": "ایمیل ادمین",
+    "adminUsername": "نام کاربری ادمین",
+    "password": "رمز عبور",
+    "confirmPassword": "تکرار رمز عبور",
+    "previous": "قبلی",
+    "next": "بعدی",
+    "installing": "در حال نصب...",
+    "completeInstallation": "اتمام نصب",
+    "readyToInstall": "آماده نصب",
+    "confirmMessage": "لطفاً اطلاعات را بررسی کنید و سپس نصب را تکمیل کنید.",
+    "passwordMismatch": "رمز عبور و تکرار آن مطابقت ندارند",
+    "error": "خطا در نصب"
   }
 }
 
