@@ -35,6 +35,10 @@ for service in api-gateway monitoring-service bot-manager; do
   fi
 done
 
+echo "Stopping any existing containers..."
+cd "$PROJECT_DIR"
+docker-compose down --remove-orphans || true
+
 echo "Bringing up containers..."
 cd "$PROJECT_DIR"
 docker-compose pull || true
