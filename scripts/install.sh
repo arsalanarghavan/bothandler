@@ -37,6 +37,9 @@ done
 
 echo "Stopping and removing any existing containers..."
 cd "$PROJECT_DIR"
+# Force remove all containers with "bothandler" in their name (including orphaned ones)
+docker ps -a --filter "name=bothandler" --format "{{.ID}}" | xargs -r docker rm -f || true
+# Also try docker-compose cleanup
 docker-compose rm -f --stop || true
 docker-compose down --remove-orphans || true
 
