@@ -32,6 +32,11 @@ for service in api-gateway monitoring-service bot-manager; do
         fi
       fi
     fi
+    # Create SQLite database if it doesn't exist
+    if [ ! -f "$SERVICE_DIR/database/database.sqlite" ]; then
+      touch "$SERVICE_DIR/database/database.sqlite"
+      chmod 666 "$SERVICE_DIR/database/database.sqlite" || true
+    fi
   fi
 done
 
