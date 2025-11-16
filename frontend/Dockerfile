@@ -16,6 +16,9 @@ FROM nginx:1.27-alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Copy assets if they exist
+COPY public/assets /usr/share/nginx/html/assets 2>/dev/null || true
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

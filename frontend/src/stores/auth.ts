@@ -15,9 +15,11 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await axios.get(`${API_BASE}/setup/status`);
       isInstalled.value = Boolean(response.data?.installed);
       return isInstalled.value;
-    } catch {
-      isInstalled.value = true; // Assume installed if API fails
-      return true;
+    } catch (error) {
+      // If API fails, assume not installed to show setup wizard
+      console.error('Setup status check failed:', error);
+      isInstalled.value = false;
+      return false;
     }
   }
 
