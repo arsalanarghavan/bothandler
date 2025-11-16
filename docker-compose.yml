@@ -83,6 +83,8 @@ services:
       VIRTUAL_HOST: dashboard.example.com
       LETSENCRYPT_HOST: dashboard.example.com
       VIRTUAL_PORT: 80
+    ports:
+      - "8080:80"
     depends_on:
       - nginx-proxy
       - api-gateway
