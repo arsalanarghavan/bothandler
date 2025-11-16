@@ -19,6 +19,22 @@ if ! command -v docker-compose >/dev/null 2>&1; then
   sudo chmod +x /usr/local/bin/docker-compose
 fi
 
+echo "Preparing Laravel service environments (.env & APP_KEY)..."
+cd "$PROJECT_DIR"
+for service in api-gateway monitoring-service bot-manager; do
+  SERVICE_DIR="backend/$service"
+  if [ -d "$SERVICE_DIR" ]; then
+    if [ ! -f "$SERVICE_DIR/.env" ]; then
+      if [ -f "$SERVICE_DIR/.env.example" ]; then
+        cp "$SERVICE_DIR/.env.example" "$SERVICE_DIR/.env"
+        if command -v php >/dev/null 2>&1; then
+          (cd "$SERVICE_DIR" && php artisan key:generate --ansi || true)
+        fi
+      fi
+    fi
+  fi
+done
+
 echo "Bringing up containers..."
 cd "$PROJECT_DIR"
 docker-compose pull || true
