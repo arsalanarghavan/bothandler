@@ -21,6 +21,13 @@ jobs:
         run: |
           cd backend/${{ matrix.service }}
           composer install --no-interaction --prefer-dist
+      - name: Prepare environment
+        run: |
+          cd backend/${{ matrix.service }}
+          if [ ! -f ".env" ]; then
+            cp .env.example .env
+          fi
+          php artisan key:generate
       - name: Run tests
         run: |
           cd backend/${{ matrix.service }}
