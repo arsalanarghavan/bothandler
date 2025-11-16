@@ -41,6 +41,11 @@ docker-compose pull || true
 docker-compose build
 docker-compose up -d
 
-echo "Installation finished. Now open your dashboard domain in the browser; the setup wizard will ask for the domain and configure everything (including SSL) automatically."
+SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+
+echo "Installation finished."
+echo "Admin panel (temporary, with server IP):  http://$SERVER_IP/"
+echo "For production, point your dashboard domain to this server IP and open it in the browser;"
+echo "the setup wizard will ask for the domain and configure everything (including SSL) automatically."
 
 
