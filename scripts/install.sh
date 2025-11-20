@@ -177,12 +177,18 @@ sleep 10
 show_progress 10 10 "Initializing database..."
 echo ""
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
-# Wait for services to be ready (check if containers are running)
-for i in {1..30}; do
-  if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" ps 2>/dev/null | grep -q "Up"; then
+# Wait for services to be ready (check if containers are running and healthy)
+MAX_WAIT=60
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+  RUNNING_COUNT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" ps 2>/dev/null | grep -c "Up" || echo "0")
+  if [ "$RUNNING_COUNT" -ge "4" ]; then
+    # Wait a bit more for services to be fully ready
+    sleep 5
     break
   fi
   sleep 2
+  WAIT_COUNT=$((WAIT_COUNT + 2))
 done
 
 # Run migrations (retry if needed)
@@ -194,43 +200,49 @@ set +e
 
 # Run migrations for api-gateway
 for i in 1 2 3; do
-    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1
-    if [ $? -eq 0 ]; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
+        echo -e "${GREEN}✓ api-gateway migrations completed${NC}" >&2
         break
-    fi
-    if [ $i -eq 3 ]; then
-        MIGRATION_FAILED=1
-        echo -e "${YELLOW}Warning: api-gateway migrations failed after 3 attempts${NC}" >&2
     else
-        sleep 5
+        if [ $i -eq 3 ]; then
+            MIGRATION_FAILED=1
+            echo -e "${YELLOW}Warning: api-gateway migrations failed after 3 attempts${NC}" >&2
+        else
+            echo -e "${YELLOW}Retrying api-gateway migrations (attempt $i/3)...${NC}" >&2
+            sleep 5
+        fi
     fi
 done
 
 # Run migrations for monitoring-service
 for i in 1 2 3; do
-    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1
-    if [ $? -eq 0 ]; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
+        echo -e "${GREEN}✓ monitoring-service migrations completed${NC}" >&2
         break
-    fi
-    if [ $i -eq 3 ]; then
-        MIGRATION_FAILED=1
-        echo -e "${YELLOW}Warning: monitoring-service migrations failed after 3 attempts${NC}" >&2
     else
-        sleep 5
+        if [ $i -eq 3 ]; then
+            MIGRATION_FAILED=1
+            echo -e "${YELLOW}Warning: monitoring-service migrations failed after 3 attempts${NC}" >&2
+        else
+            echo -e "${YELLOW}Retrying monitoring-service migrations (attempt $i/3)...${NC}" >&2
+            sleep 5
+        fi
     fi
 done
 
 # Run migrations for bot-manager
 for i in 1 2 3; do
-    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1
-    if [ $? -eq 0 ]; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
+        echo -e "${GREEN}✓ bot-manager migrations completed${NC}" >&2
         break
-    fi
-    if [ $i -eq 3 ]; then
-        MIGRATION_FAILED=1
-        echo -e "${YELLOW}Warning: bot-manager migrations failed after 3 attempts${NC}" >&2
     else
-        sleep 5
+        if [ $i -eq 3 ]; then
+            MIGRATION_FAILED=1
+            echo -e "${YELLOW}Warning: bot-manager migrations failed after 3 attempts${NC}" >&2
+        else
+            echo -e "${YELLOW}Retrying bot-manager migrations (attempt $i/3)...${NC}" >&2
+            sleep 5
+        fi
     fi
 done
 
@@ -251,13 +263,15 @@ if [ -z "$SERVER_IP" ]; then
 fi
 
 # Clear progress line and show success (force output even if set -e was enabled)
-# Use printf instead of echo for better compatibility
+# Redirect all output to stderr to ensure visibility (stderr is unbuffered)
+exec >&2
+
 printf "\n\n"
 printf "${GREEN}✓ Installation completed successfully!${NC}\n"
 printf "\n"
 
 # Display success message (ensure it always shows - write to stderr)
-cat >&2 << EOF
+cat << EOF
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║
