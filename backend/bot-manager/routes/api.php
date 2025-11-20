@@ -6,6 +6,11 @@ use App\Models\Deployment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Route;
 
+// Healthcheck endpoint
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
 Route::middleware(InternalApiAuth::class)->group(function () {
     Route::get('/bots', [BotController::class, 'index']);
     Route::post('/bots', [BotController::class, 'store']);

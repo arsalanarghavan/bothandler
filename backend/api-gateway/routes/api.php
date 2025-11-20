@@ -20,6 +20,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/bots', [ProxyBotController::class, 'destroyAll']);
 });
 
+// Healthcheck endpoint
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
 Route::get('/setup/status', [SetupController::class, 'status']);
 Route::post('/setup/complete', [SetupController::class, 'complete']);
 
