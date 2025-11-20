@@ -28,8 +28,8 @@ show_progress() {
            "$message"
 }
 
-# Clear screen and show header
-clear
+# Clear screen and show header (skip if running via curl | bash)
+[ -t 0 ] && clear || true
 cat << "EOF"
 
 ╔══════════════════════════════════════════════════════════════╗
@@ -74,8 +74,14 @@ fi
 sudo usermod -aG docker "$USER" &>/dev/null || true
 
 if ! command -v docker-compose >/dev/null 2>&1; then
-  sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null
-  sudo chmod +x /usr/local/bin/docker-compose
+  # Try to install docker compose plugin first (newer method)
+  if ! docker compose version &>/dev/null; then
+    # Fallback to standalone docker-compose
+    DOCKER_COMPOSE_VERSION="2.24.0"
+    sudo curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null || \
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null
+    sudo chmod +x /usr/local/bin/docker-compose
+  fi
 fi
 
 # Step 4: Prepare Environment Files (40%)
@@ -159,8 +165,14 @@ for i in 1 2 3; do
     docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
 done
 
-# Get server IP
+# Get server IP (try multiple methods)
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [ -z "$SERVER_IP" ]; then
+  SERVER_IP="$(ip route get 8.8.8.8 2>/dev/null | awk '{print $7; exit}')"
+fi
+if [ -z "$SERVER_IP" ]; then
+  SERVER_IP="$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'YOUR_SERVER_IP')"
+fi
 
 # Clear progress line and show success
 echo ""
