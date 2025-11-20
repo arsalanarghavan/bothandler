@@ -40,24 +40,58 @@ class SetupController extends Controller
                 return response()->json(['message' => 'Passwords do not match'], 422);
             }
 
-            User::create([
-                'name' => $validated['username'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-            ]);
+            // Check database connection
+            try {
+                \DB::connection()->getPdo();
+            } catch (\Exception $e) {
+                \Log::error('Database connection failed: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Database connection failed. Please check your database configuration.',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
 
-            Setting::updateOrCreate(
-                ['key' => 'dashboard_name'],
-                ['value' => $validated['dashboard_name']]
-            );
+            // Create user
+            try {
+                User::create([
+                    'name' => $validated['username'],
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to create user: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Failed to create user. Please check database migrations.',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
 
-            Setting::updateOrCreate(
-                ['key' => 'dashboard_domain'],
-                ['value' => $validated['dashboard_domain']]
-            );
+            // Create settings
+            try {
+                Setting::updateOrCreate(
+                    ['key' => 'dashboard_name'],
+                    ['value' => $validated['dashboard_name']]
+                );
+
+                Setting::updateOrCreate(
+                    ['key' => 'dashboard_domain'],
+                    ['value' => $validated['dashboard_domain']]
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to create settings: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Failed to save settings. Please check database migrations.',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
 
             // Update domain, email, and internal API key
-            $this->updateEnvFiles($validated['dashboard_domain'], $validated['email']);
+            try {
+                $this->updateEnvFiles($validated['dashboard_domain'], $validated['email']);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update env files: ' . $e->getMessage());
+                // Don't fail setup if env update fails, just log it
+            }
 
             return response()->json([
                 'status' => 'ok',
@@ -70,10 +104,15 @@ class SetupController extends Controller
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Setup failed: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
             return response()->json([
                 'message' => 'Setup failed: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
