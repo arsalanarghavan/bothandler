@@ -58,11 +58,29 @@ docker-compose pull || true
 docker-compose build
 docker-compose up -d
 
+echo "Waiting for services to be ready..."
+sleep 10
+
+echo "Running database migrations..."
+docker-compose exec -T api-gateway php artisan migrate --force || echo "Warning: API Gateway migrations failed"
+docker-compose exec -T monitoring-service php artisan migrate --force || echo "Warning: Monitoring Service migrations failed"
+docker-compose exec -T bot-manager php artisan migrate --force || echo "Warning: Bot Manager migrations failed"
+
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 
-echo "Installation finished."
-echo "Admin panel (temporary, with server IP):  http://$SERVER_IP:8080/"
-echo "For production, point your dashboard domain to this server IP and open it in the browser (port 80);"
-echo "the setup wizard will ask for the domain and configure everything (including SSL) automatically."
+echo ""
+echo "========================================="
+echo "Installation finished successfully!"
+echo "========================================="
+echo ""
+echo "Access your dashboard at:"
+echo "  - Temporary URL (IP): http://$SERVER_IP:8080/"
+echo "  - Production URL: http://YOUR_DOMAIN (after DNS setup)"
+echo ""
+echo "Complete the setup wizard to:"
+echo "  1. Set dashboard name and domain"
+echo "  2. Create admin account"
+echo "  3. Configure SSL automatically"
+echo ""
 
 

@@ -1,20 +1,19 @@
 FROM php:8.3-fpm-alpine
 
-RUN apk add --no-cache git curl libzip-dev zip unzip bash docker-cli \
-    && docker-php-ext-install pdo pdo_mysql
+RUN apk add --no-cache \
+    git curl libzip-dev zip unzip bash \
+    libxml2-dev oniguruma-dev \
+    && docker-php-ext-install pdo pdo_mysql zip xml dom xmlwriter mbstring
 
 WORKDIR /var/www/html
 
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 COPY composer.json composer.lock* ./
-RUN php -r "file_exists('composer.phar') || copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
-    && rm composer-setup.php \
-    && composer install --no-dev --no-interaction --no-progress --optimize-autoloader || true
+RUN composer install --no-dev --no-interaction --optimize-autoloader
 
 COPY . .
 
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache
 
 CMD ["php-fpm"]
-
-
