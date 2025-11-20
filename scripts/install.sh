@@ -73,15 +73,28 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 sudo usermod -aG docker "$USER" &>/dev/null || true
 
-if ! command -v docker-compose >/dev/null 2>&1; then
-  # Try to install docker compose plugin first (newer method)
-  if ! docker compose version &>/dev/null; then
-    # Fallback to standalone docker-compose
-    DOCKER_COMPOSE_VERSION="2.24.0"
-    sudo curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null || \
-    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null
-    sudo chmod +x /usr/local/bin/docker-compose
+# Check for docker compose (plugin version)
+DOCKER_COMPOSE_CMD=""
+if docker compose version &>/dev/null 2>&1; then
+  DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+  DOCKER_COMPOSE_CMD="docker-compose"
+else
+  # Install standalone docker-compose
+  echo -e "${YELLOW}Installing docker-compose...${NC}"
+  DOCKER_COMPOSE_VERSION="2.24.0"
+  if ! sudo curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose 2>/dev/null; then
+    # Try latest version
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose 2>/dev/null
   fi
+  sudo chmod +x /usr/local/bin/docker-compose
+  DOCKER_COMPOSE_CMD="docker-compose"
+fi
+
+# Verify docker compose is available
+if [ -z "$DOCKER_COMPOSE_CMD" ]; then
+  echo -e "${RED}Error: Failed to install docker-compose${NC}"
+  exit 1
 fi
 
 # Step 4: Prepare Environment Files (40%)
@@ -134,18 +147,18 @@ done
 show_progress 6 10 "Cleaning up old installations..."
 cd "$PROJECT_DIR"
 docker ps -a --format "{{.ID}} {{.Names}}" | grep -i bothandler | awk '{print $1}' | xargs -r docker rm -f &>/dev/null || true
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans -v &>/dev/null || true
+$DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans -v &>/dev/null || true
 docker image prune -f &>/dev/null || true
 
 # Step 7: Pull Docker Images (70%)
 show_progress 7 10 "Downloading required images..."
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" pull &>/dev/null || true
+$DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" pull &>/dev/null || true
 
 # Step 8: Build Services (80%)
 show_progress 8 10 "Building application services..."
 echo ""
 echo -e "${YELLOW}Building Docker images (this may take several minutes)...${NC}"
-if ! docker-compose -f "$PROJECT_DIR/docker-compose.yml" build; then
+if ! $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" build; then
   echo ""
   echo -e "${RED}Error: Build failed. Check the output above for details.${NC}"
   exit 1
@@ -153,7 +166,7 @@ fi
 
 # Step 9: Start Services (90%)
 show_progress 9 10 "Starting all services..."
-if ! docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d; then
+if ! $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" up -d; then
   echo ""
   echo -e "${RED}Error: Failed to start services.${NC}"
   exit 1
@@ -166,7 +179,7 @@ echo ""
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 # Wait for services to be ready (check if containers are running)
 for i in {1..30}; do
-  if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps | grep -q "Up"; then
+  if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" ps 2>/dev/null | grep -q "Up"; then
     break
   fi
   sleep 2
@@ -177,7 +190,7 @@ echo -e "${YELLOW}Running database migrations...${NC}"
 MIGRATION_FAILED=0
 
 for i in 1 2 3; do
-    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
         break
     else
         [ $i -eq 3 ] && MIGRATION_FAILED=1
@@ -186,7 +199,7 @@ for i in 1 2 3; do
 done
 
 for i in 1 2 3; do
-    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
         break
     else
         [ $i -eq 3 ] && MIGRATION_FAILED=1
@@ -195,7 +208,7 @@ for i in 1 2 3; do
 done
 
 for i in 1 2 3; do
-    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
+    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
         break
     else
         [ $i -eq 3 ] && MIGRATION_FAILED=1
