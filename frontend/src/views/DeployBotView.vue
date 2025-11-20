@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -127,7 +127,6 @@ import { Separator } from '@/components/ui/separator'
 import { Rocket } from 'lucide-vue-next'
 
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const form = ref({
   name: '',
@@ -146,10 +145,11 @@ const handleSubmit = async () => {
   error.value = ''
   
   try {
-    const response = await axios.post(`${API_BASE}/bots`, form.value)
-    router.push(`/bots/${response.data.id}`)
+    const response = await apiClient.post('/bots', form.value)
+    const botId = response.data.data?.id || response.data.id
+    router.push(`/bots/${botId}`)
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to deploy service'
+    error.value = err.message || 'Failed to deploy service'
   } finally {
     submitting.value = false
   }

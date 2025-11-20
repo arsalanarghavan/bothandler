@@ -148,9 +148,11 @@ class SetupController extends Controller
             $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
             
             if (file_exists($dockerSocket) && is_readable($dockerSocket)) {
+                $dockerComposeFile = $projectRoot . '/docker-compose.yml';
+                
                 // Rebuild frontend with new domain (in background)
                 \Log::info('Rebuilding frontend with new domain...');
-                $rebuildCommand = "cd " . escapeshellarg($projectRoot) . " && docker-compose build frontend > /dev/null 2>&1 && docker-compose up -d frontend > /dev/null 2>&1 &";
+                $rebuildCommand = "cd " . escapeshellarg($projectRoot) . " && docker-compose -f " . escapeshellarg($dockerComposeFile) . " build frontend > /dev/null 2>&1 && docker-compose -f " . escapeshellarg($dockerComposeFile) . " up -d frontend > /dev/null 2>&1 &";
                 shell_exec($rebuildCommand);
                 
                 // Restart other containers

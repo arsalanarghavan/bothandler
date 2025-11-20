@@ -130,11 +130,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Server, Activity, AlertCircle, Cpu, Download, Upload } from 'lucide-vue-next'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const summary = ref<any>({})
 const loading = ref(false)
@@ -162,10 +160,10 @@ const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await axios.get(`${API_BASE}/dashboard/summary`)
-    summary.value = response.data
+    const response = await apiClient.get('/dashboard/summary')
+    summary.value = response.data.data || response.data
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to load dashboard data'
+    error.value = err.message || 'Failed to load dashboard data'
   } finally {
     loading.value = false
   }

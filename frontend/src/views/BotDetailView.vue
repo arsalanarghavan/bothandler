@@ -121,7 +121,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -130,7 +130,6 @@ import { ArrowLeft, RefreshCw, ChevronDown } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const bot = ref<any>({})
 const deployments = ref<any[]>([])
@@ -167,8 +166,8 @@ const toggleLog = (id: number) => {
 
 const loadBot = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/bots/${route.params.id}`)
-    bot.value = response.data
+    const response = await apiClient.get(`/bots/${route.params.id}`)
+    bot.value = response.data.data || response.data
   } catch (error) {
     console.error('Failed to load bot:', error)
   }
@@ -177,8 +176,8 @@ const loadBot = async () => {
 const loadDeployments = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`${API_BASE}/bots/${route.params.id}/deployments`)
-    deployments.value = response.data
+    const response = await apiClient.get(`/bots/${route.params.id}/deployments`)
+    deployments.value = response.data.data || response.data || []
   } catch (error) {
     console.error('Failed to load deployments:', error)
   } finally {
@@ -189,7 +188,7 @@ const loadDeployments = async () => {
 const deployNow = async () => {
   deploying.value = true
   try {
-    await axios.post(`${API_BASE}/bots/${route.params.id}/deploy`)
+    await apiClient.post(`/bots/${route.params.id}/deploy`)
     await loadBot()
     await loadDeployments()
   } catch (error) {

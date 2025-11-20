@@ -104,7 +104,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -112,7 +112,6 @@ import { Badge } from '@/components/ui/badge'
 import { PlusCircle, RefreshCw, Trash2 } from 'lucide-vue-next'
 
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const bots = ref<any[]>([])
 const loading = ref(false)
@@ -141,8 +140,8 @@ const getStatusVariant = (status: string) => {
 const loadBots = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`${API_BASE}/bots`)
-    bots.value = response.data
+    const response = await apiClient.get('/bots')
+    bots.value = response.data.data || response.data || []
   } catch (error) {
     console.error('Failed to load bots:', error)
   } finally {
@@ -153,7 +152,7 @@ const loadBots = async () => {
 const deployBot = async (id: number) => {
   deploying[id] = true
   try {
-    await axios.post(`${API_BASE}/bots/${id}/deploy`)
+    await apiClient.post(`/bots/${id}/deploy`)
     await loadBots()
   } catch (error) {
     console.error('Failed to deploy bot:', error)
@@ -167,7 +166,7 @@ const deleteBot = async (id: number) => {
   
   deleting[id] = true
   try {
-    await axios.delete(`${API_BASE}/bots/${id}`)
+    await apiClient.delete(`/bots/${id}`)
     await loadBots()
   } catch (error) {
     console.error('Failed to delete bot:', error)
@@ -181,7 +180,7 @@ const updateAll = async () => {
   
   loading.value = true
   try {
-    await axios.post(`${API_BASE}/bots/update-all`)
+    await apiClient.post('/bots/update-all')
     await loadBots()
   } catch (error) {
     console.error('Failed to update all:', error)

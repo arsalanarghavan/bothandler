@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api';
+import apiClient, { API_BASE } from '@/lib/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(null);
@@ -28,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Create new check promise
     installCheckPromise.value = (async () => {
       try {
-        const response = await axios.get(`${API_BASE}/setup/status`);
+        const response = await apiClient.get('/setup/status');
         isInstalled.value = Boolean(response.data?.installed);
         // Cache in localStorage for future visits
         localStorage.setItem('installation_status', JSON.stringify(isInstalled.value));
@@ -49,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email: string, password: string) {
     try {
-      const response = await axios.post(`${API_BASE}/auth/login`, {
+      const response = await apiClient.post('/auth/login', {
         email,
         password,
       });
@@ -57,10 +55,9 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = response.data.user;
       isAuthenticated.value = true;
       localStorage.setItem('auth_token', token.value);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
       return true;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+      throw new Error(error.message || error.response?.data?.message || 'Login failed');
     }
   }
 
@@ -69,7 +66,6 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
     isAuthenticated.value = false;
     localStorage.removeItem('auth_token');
-    delete axios.defaults.headers.common['Authorization'];
   }
 
   async function checkAuth() {
@@ -78,8 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
       return false;
     }
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
-      const response = await axios.get(`${API_BASE}/auth/me`);
+      const response = await apiClient.get('/auth/me');
       user.value = response.data.data;
       isAuthenticated.value = true;
       return true;

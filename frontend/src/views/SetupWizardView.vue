@@ -149,7 +149,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -159,7 +159,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const form = ref({
   dashboard_name: '',
@@ -195,7 +194,7 @@ const submit = async () => {
   submitting.value = true
   error.value = ''
   try {
-    const response = await axios.post(`${API_BASE}/setup/complete`, form.value)
+    const response = await apiClient.post('/setup/complete', form.value)
     console.log('Setup response:', response.data)
     
     // Update installation status in store and localStorage
@@ -208,24 +207,15 @@ const submit = async () => {
     }, 500)
   } catch (err: any) {
     console.error('Setup error:', err)
-    console.error('Setup error response:', err.response?.data)
-    console.error('Setup error status:', err.response?.status)
     
     // Show detailed error message
-    if (err.response?.data?.errors) {
+    if (err.data?.errors) {
       // Validation errors
-      const errors = Object.values(err.response.data.errors).flat()
+      const errors = Object.values(err.data.errors).flat()
       error.value = errors.join(', ')
-    } else if (err.response?.data?.message) {
-      // Backend error message
-      error.value = err.response.data.message
-      // Also show error details if available
-      if (err.response.data.error) {
-        error.value += ` (${err.response.data.error})`
-      }
     } else if (err.message) {
-      // Network or other errors
-      error.value = `Network error: ${err.message}`
+      // Error message from interceptor
+      error.value = err.message
     } else {
       error.value = 'Installation failed. Please check server logs and browser console.'
     }

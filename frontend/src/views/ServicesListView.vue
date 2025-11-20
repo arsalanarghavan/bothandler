@@ -92,14 +92,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import apiClient from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Download, Upload } from 'lucide-vue-next'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const containers = ref<any[]>([])
 const loading = ref(false)
@@ -130,8 +128,8 @@ const formatPercent = (percent: number) => {
 const loadContainers = async () => {
   loading.value = true
   try {
-    const response = await axios.get(`${API_BASE}/dashboard/containers`)
-    containers.value = response.data
+    const response = await apiClient.get('/dashboard/containers')
+    containers.value = response.data.data || response.data || []
   } catch (error) {
     console.error('Failed to load containers:', error)
   } finally {
