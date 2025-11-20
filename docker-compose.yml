@@ -40,11 +40,18 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./backend/api-gateway/.env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/bothandler/.env:/opt/bothandler/.env:rw
+      - /opt/bothandler/backend/api-gateway/.env:/var/www/html/.env:rw
+      - /opt/bothandler/backend/monitoring-service/.env:/opt/bothandler/backend/monitoring-service/.env:rw
+      - /opt/bothandler/backend/bot-manager/.env:/opt/bothandler/backend/bot-manager/.env:rw
     environment:
       VIRTUAL_HOST: api.${DASHBOARD_DOMAIN:-example.com}
       LETSENCRYPT_HOST: api.${DASHBOARD_DOMAIN:-example.com}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
       VIRTUAL_PORT: 80
+      PROJECT_ROOT: /opt/bothandler
     depends_on:
       - nginx-proxy
     networks:

@@ -119,10 +119,12 @@ class SetupController extends Controller
 
     protected function updateEnvFiles(string $domain, string $email): void
     {
-        $rootEnvPath = base_path('../../.env');
-        $apiGatewayEnvPath = base_path('.env');
-        $monitoringServiceEnvPath = base_path('../../backend/monitoring-service/.env');
-        $botManagerEnvPath = base_path('../../backend/bot-manager/.env');
+        // Paths are now mounted as volumes in docker-compose.yml
+        $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
+        $rootEnvPath = $projectRoot . '/.env';
+        $apiGatewayEnvPath = base_path('.env'); // Mounted as /var/www/html/.env
+        $monitoringServiceEnvPath = $projectRoot . '/backend/monitoring-service/.env';
+        $botManagerEnvPath = $projectRoot . '/backend/bot-manager/.env';
 
         $internalApiKey = \Illuminate\Support\Str::random(64);
 
@@ -140,11 +142,19 @@ class SetupController extends Controller
         // Update bot-manager .env
         $this->updateEnvFile($botManagerEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
 
-        // Trigger docker-compose restart
+        // Trigger docker restart using docker socket
         try {
-            exec('cd ' . base_path('../..') . ' && docker-compose restart api-gateway frontend monitoring-service bot-manager > /dev/null 2>&1 &');
+            $containersToRestart = ['api-gateway', 'frontend', 'monitoring-service', 'bot-manager'];
+            foreach ($containersToRestart as $container) {
+                // Find container by name pattern
+                $containerName = exec("docker ps --format '{{.Names}}' | grep -E 'bothandler_{$container}|{$container}' | head -1");
+                if ($containerName) {
+                    exec("docker restart {$containerName} > /dev/null 2>&1 &");
+                }
+            }
         } catch (\Exception $e) {
             \Log::warning('Failed to restart containers: ' . $e->getMessage());
+            // Don't fail setup if restart fails
         }
     }
 
