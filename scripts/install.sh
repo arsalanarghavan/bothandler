@@ -47,24 +47,24 @@ docker ps -a --format "{{.ID}} {{.Names}}" | grep -i bothandler | awk '{print $1
 # Remove all containers with hash-based names that might be orphaned
 docker ps -a --format "{{.ID}} {{.Names}}" | grep -E "bothandler|_[0-9a-f]+_" | awk '{print $1}' | xargs -r docker rm -f || true
 # Also try docker-compose cleanup
-docker-compose rm -f --stop || true
-docker-compose down --remove-orphans -v || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" rm -f --stop || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans -v || true
 # Remove dangling images
 docker image prune -f || true
 
 echo "Bringing up containers..."
 cd "$PROJECT_DIR"
-docker-compose pull || true
-docker-compose build
-docker-compose up -d
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" pull || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" build
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d
 
 echo "Waiting for services to be ready..."
 sleep 10
 
 echo "Running database migrations..."
-docker-compose exec -T api-gateway php artisan migrate --force || echo "Warning: API Gateway migrations failed"
-docker-compose exec -T monitoring-service php artisan migrate --force || echo "Warning: Monitoring Service migrations failed"
-docker-compose exec -T bot-manager php artisan migrate --force || echo "Warning: Bot Manager migrations failed"
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force || echo "Warning: API Gateway migrations failed"
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force || echo "Warning: Monitoring Service migrations failed"
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force || echo "Warning: Bot Manager migrations failed"
 
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 
