@@ -4,6 +4,7 @@ FROM php:8.3-fpm-alpine
 RUN apk add --no-cache \
     git \
     curl \
+    wget \
     libzip-dev \
     zip \
     unzip \

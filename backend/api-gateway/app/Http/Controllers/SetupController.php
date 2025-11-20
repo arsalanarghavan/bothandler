@@ -144,13 +144,25 @@ class SetupController extends Controller
 
         // Trigger docker restart using docker socket
         try {
-            $containersToRestart = ['api-gateway', 'frontend', 'monitoring-service', 'bot-manager'];
-            foreach ($containersToRestart as $container) {
-                // Find container by name pattern
-                $containerName = exec("docker ps --format '{{.Names}}' | grep -E 'bothandler_{$container}|{$container}' | head -1");
-                if ($containerName) {
-                    exec("docker restart {$containerName} > /dev/null 2>&1 &");
+            $dockerSocket = '/var/run/docker.sock';
+            if (file_exists($dockerSocket)) {
+                $containersToRestart = ['api-gateway', 'frontend', 'monitoring-service', 'bot-manager'];
+                foreach ($containersToRestart as $container) {
+                    // Find container by name pattern using docker ps
+                    $output = [];
+                    $returnCode = 0;
+                    exec("docker ps --format '{{.Names}}' 2>&1", $output, $returnCode);
+                    if ($returnCode === 0) {
+                        foreach ($output as $line) {
+                            if (preg_match("/bothandler[_-]{$container}|{$container}/i", $line)) {
+                                exec("docker restart " . escapeshellarg($line) . " > /dev/null 2>&1 &");
+                                break;
+                            }
+                        }
+                    }
                 }
+            } else {
+                \Log::warning('Docker socket not found at ' . $dockerSocket);
             }
         } catch (\Exception $e) {
             \Log::warning('Failed to restart containers: ' . $e->getMessage());

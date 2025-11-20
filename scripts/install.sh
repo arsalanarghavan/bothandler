@@ -81,6 +81,11 @@ fi
 show_progress 4 10 "Preparing service configurations..."
 cd "$PROJECT_DIR"
 
+# Create root .env if it doesn't exist
+if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+  cp ".env.example" ".env"
+fi
+
 for service in api-gateway monitoring-service bot-manager; do
   SERVICE_DIR="backend/$service"
   if [ -d "$SERVICE_DIR" ]; then
