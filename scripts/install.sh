@@ -189,35 +189,56 @@ done
 echo -e "${YELLOW}Running database migrations...${NC}"
 MIGRATION_FAILED=0
 
+# Temporarily disable set -e for migrations
+set +e
+
+# Run migrations for api-gateway
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
+    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1
+    if [ $? -eq 0 ]; then
         break
+    fi
+    if [ $i -eq 3 ]; then
+        MIGRATION_FAILED=1
+        echo -e "${YELLOW}Warning: api-gateway migrations failed after 3 attempts${NC}" >&2
     else
-        [ $i -eq 3 ] && MIGRATION_FAILED=1
         sleep 5
     fi
 done
 
+# Run migrations for monitoring-service
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
+    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1
+    if [ $? -eq 0 ]; then
         break
+    fi
+    if [ $i -eq 3 ]; then
+        MIGRATION_FAILED=1
+        echo -e "${YELLOW}Warning: monitoring-service migrations failed after 3 attempts${NC}" >&2
     else
-        [ $i -eq 3 ] && MIGRATION_FAILED=1
         sleep 5
     fi
 done
 
+# Run migrations for bot-manager
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
+    $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1
+    if [ $? -eq 0 ]; then
         break
+    fi
+    if [ $i -eq 3 ]; then
+        MIGRATION_FAILED=1
+        echo -e "${YELLOW}Warning: bot-manager migrations failed after 3 attempts${NC}" >&2
     else
-        [ $i -eq 3 ] && MIGRATION_FAILED=1
         sleep 5
     fi
 done
+
+# Re-enable set -e
+set -e
 
 if [ $MIGRATION_FAILED -eq 1 ]; then
-  echo -e "${YELLOW}Warning: Some migrations may have failed. You can run them manually later.${NC}"
+  echo -e "${YELLOW}Warning: Some migrations may have failed. You can run them manually later.${NC}" >&2
 fi
 
 # Get server IP (try multiple methods)
