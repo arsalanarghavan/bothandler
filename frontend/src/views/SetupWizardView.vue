@@ -207,15 +207,27 @@ const submit = async () => {
       router.push('/login')
     }, 500)
   } catch (err: any) {
-    console.error('Setup error:', err.response?.data)
+    console.error('Setup error:', err)
+    console.error('Setup error response:', err.response?.data)
+    console.error('Setup error status:', err.response?.status)
     
     // Show detailed error message
     if (err.response?.data?.errors) {
       // Validation errors
       const errors = Object.values(err.response.data.errors).flat()
       error.value = errors.join(', ')
+    } else if (err.response?.data?.message) {
+      // Backend error message
+      error.value = err.response.data.message
+      // Also show error details if available
+      if (err.response.data.error) {
+        error.value += ` (${err.response.data.error})`
+      }
+    } else if (err.message) {
+      // Network or other errors
+      error.value = `Network error: ${err.message}`
     } else {
-      error.value = err.response?.data?.message || 'Installation failed. Please check server logs.'
+      error.value = 'Installation failed. Please check server logs and browser console.'
     }
   } finally {
     submitting.value = false

@@ -48,10 +48,14 @@ COPY . .
 # Run composer autoload
 RUN composer dump-autoload --optimize --no-dev
 
+# Create storage directories if they don't exist
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views
+
 # Set permissions
 RUN chown -R www-data:www-data \
     storage \
-    bootstrap/cache
+    bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache
 
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/nginx.conf
