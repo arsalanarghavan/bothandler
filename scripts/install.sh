@@ -140,9 +140,18 @@ sleep 10
 
 # Step 10: Initialize Database (100%)
 show_progress 10 10 "Initializing database..."
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force &>/dev/null || true
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force &>/dev/null || true
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force &>/dev/null || true
+# Wait for services to be ready
+sleep 10
+# Run migrations (retry if needed)
+for i in 1 2 3; do
+    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+done
+for i in 1 2 3; do
+    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+done
+for i in 1 2 3; do
+    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+done
 
 # Get server IP
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
