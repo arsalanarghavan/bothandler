@@ -10,14 +10,14 @@ import LoginView from '../views/LoginView.vue';
 import { useAuthStore } from '../stores/auth';
 
 const routes: RouteRecordRaw[] = [
-  { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
-  { path: '/setup', name: 'setup', component: SetupWizardView, meta: { public: true } },
-  { path: '/', name: 'dashboard', component: DashboardOverviewView, meta: { requiresAuth: true } },
-  { path: '/bots', name: 'bots', component: BotsListView, meta: { requiresAuth: true } },
-  { path: '/bots/:id', name: 'bot-detail', component: BotDetailView, props: true, meta: { requiresAuth: true } },
-  { path: '/services', name: 'services', component: ServicesListView, meta: { requiresAuth: true } },
-  { path: '/deploy-bot', name: 'deploy-bot', component: DeployBotView, meta: { requiresAuth: true } },
-  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  { path: '/login', name: 'login', component: LoginView },
+  { path: '/setup', name: 'setup', component: SetupWizardView },
+  { path: '/', name: 'dashboard', component: DashboardOverviewView },
+  { path: '/bots', name: 'bots', component: BotsListView },
+  { path: '/bots/:id', name: 'bot-detail', component: BotDetailView, props: true },
+  { path: '/services', name: 'services', component: ServicesListView },
+  { path: '/deploy-bot', name: 'deploy-bot', component: DeployBotView },
+  { path: '/settings', name: 'settings', component: SettingsView },
 ];
 
 const router = createRouter({
@@ -28,42 +28,40 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  // Check if app is installed (only for non-public routes)
-  if (!to.meta.public) {
-    try {
-      const installed = await authStore.checkInstalled();
-      
-      if (!installed && to.path !== '/setup') {
-        return next('/setup');
-      }
-      
-      if (installed && to.path === '/setup') {
-        return next('/login');
-      }
-    } catch (error) {
-      // If check fails, allow access to setup
-      if (to.path !== '/setup') {
-        return next('/setup');
-      }
-    }
+  // Public routes that don't need any checks
+  const publicRoutes = ['/login', '/setup'];
+  const isPublicRoute = publicRoutes.includes(to.path);
+  
+  // If going to public route and already authenticated, redirect to home
+  if (isPublicRoute && authStore.isAuthenticated) {
+    return next('/');
   }
   
-  // Check authentication for protected routes
-  if (to.meta.requiresAuth) {
+  // If going to setup and already installed, redirect to login
+  if (to.path === '/setup') {
+    const installed = await authStore.checkInstalled();
+    if (installed) {
+      return next('/login');
+    }
+    return next();
+  }
+  
+  // For all non-public routes, check installation first
+  if (!isPublicRoute) {
+    const installed = await authStore.checkInstalled();
+    if (!installed) {
+      return next('/setup');
+    }
+    
+    // Then check authentication
     const isAuth = await authStore.checkAuth();
     if (!isAuth) {
       return next('/login');
     }
   }
   
-  // Redirect authenticated users away from login/setup
-  if ((to.path === '/login' || to.path === '/setup') && authStore.isAuthenticated) {
-    return next('/');
-  }
-  
+  // Allow navigation
   next();
 });
 
 export default router;
-
-

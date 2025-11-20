@@ -1,80 +1,147 @@
 <template>
-  <section>
-    <h1>Services</h1>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Names</th>
-          <th>Image</th>
-          <th>State</th>
-          <th>CPU %</th>
-          <th>Memory</th>
-          <th>Net In / Out</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="container in containers" :key="container.id">
-          <td>{{ container.id }}</td>
-          <td>{{ container.names.join(', ') }}</td>
-          <td>{{ container.image }}</td>
-          <td>{{ container.state }}</td>
-          <td>{{ container.cpu_percent != null ? container.cpu_percent.toFixed(1) : '-' }}</td>
-          <td>
-            <span v-if="container.mem_usage != null">
-              {{ formatBytes(container.mem_usage) }} / {{ formatBytes(container.mem_limit) }}
-              <span v-if="container.mem_percent != null">({{ container.mem_percent.toFixed(1) }}%)</span>
-            </span>
-            <span v-else>-</span>
-          </td>
-          <td>
-            <span v-if="container.net_input != null">
-              {{ formatBytes(container.net_input) }} / {{ formatBytes(container.net_output) }}
-            </span>
-            <span v-else>-</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">Docker Containers</h1>
+        <p class="text-muted-foreground">All running and stopped containers on this server</p>
+      </div>
+      <Button @click="loadContainers" :disabled="loading">
+        <RefreshCw :class="['h-4 w-4 mr-2', loading && 'animate-spin']" />
+        Refresh
+      </Button>
+    </div>
+
+    <Card>
+      <CardContent class="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Image</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead class="text-right">CPU %</TableHead>
+              <TableHead class="text-right">Memory</TableHead>
+              <TableHead class="text-right">Network I/O</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-if="loading && containers.length === 0">
+              <TableCell colspan="6" class="text-center py-8">
+                <div class="flex items-center justify-center gap-2">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span>Loading containers...</span>
+                </div>
+              </TableCell>
+            </TableRow>
+            
+            <TableRow v-else-if="!loading && containers.length === 0">
+              <TableCell colspan="6" class="text-center py-8 text-muted-foreground">
+                No containers found
+              </TableCell>
+            </TableRow>
+
+            <TableRow v-for="container in containers" :key="container.id">
+              <TableCell class="font-medium">
+                <div>{{ formatName(container.names) }}</div>
+              </TableCell>
+              <TableCell>
+                <code class="text-xs bg-muted px-2 py-1 rounded">{{ container.image }}</code>
+              </TableCell>
+              <TableCell>
+                <Badge :variant="container.state === 'running' ? 'default' : 'secondary'">
+                  <div class="flex items-center gap-1">
+                    <div 
+                      :class="[
+                        'h-2 w-2 rounded-full',
+                        container.state === 'running' ? 'bg-green-500' : 'bg-gray-400'
+                      ]"
+                    ></div>
+                    {{ container.state }}
+                  </div>
+                </Badge>
+              </TableCell>
+              <TableCell class="text-right tabular-nums">
+                {{ formatCpu(container.cpu_percent) }}
+              </TableCell>
+              <TableCell class="text-right tabular-nums">
+                <div class="text-sm">
+                  {{ formatBytes(container.mem_usage) }}
+                  <span class="text-muted-foreground">/ {{ formatBytes(container.mem_limit) }}</span>
+                </div>
+                <div class="text-xs text-muted-foreground">
+                  {{ formatPercent(container.mem_percent) }}
+                </div>
+              </TableCell>
+              <TableCell class="text-right tabular-nums text-sm">
+                <div class="flex items-center justify-end gap-1">
+                  <Download class="h-3 w-3 text-muted-foreground" />
+                  {{ formatBytes(container.net_input) }}
+                </div>
+                <div class="flex items-center justify-end gap-1">
+                  <Upload class="h-3 w-3 text-muted-foreground" />
+                  {{ formatBytes(container.net_output) }}
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import axios from 'axios';
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { RefreshCw, Download, Upload } from 'lucide-vue-next'
 
-interface Container {
-  id: string;
-  names: string[];
-  image: string;
-  state: string;
-  cpu_percent: number | null;
-  mem_usage: number | null;
-  mem_limit: number | null;
-  mem_percent: number | null;
-  net_input: number | null;
-  net_output: number | null;
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+
+const containers = ref<any[]>([])
+const loading = ref(false)
+
+const formatName = (names: string[]) => {
+  if (!names || names.length === 0) return 'Unknown'
+  return names[0].replace(/^\//, '')
 }
 
-const containers = ref<Container[]>([]);
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const formatBytes = (bytes: number) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
 
-onMounted(async () => {
-  const response = await axios.get(`${API_BASE}/dashboard/containers`);
-  containers.value = response.data.data;
-});
+const formatCpu = (cpu: number) => {
+  if (cpu === null || cpu === undefined) return 'N/A'
+  return cpu.toFixed(2) + '%'
+}
 
-const formatBytes = (value?: number | null): string => {
-  if (value == null) return '-';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let v = value;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
+const formatPercent = (percent: number) => {
+  if (percent === null || percent === undefined) return 'N/A'
+  return percent.toFixed(1) + '%'
+}
+
+const loadContainers = async () => {
+  loading.value = true
+  try {
+    const response = await axios.get(`${API_BASE}/dashboard/containers`)
+    containers.value = response.data
+  } catch (error) {
+    console.error('Failed to load containers:', error)
+  } finally {
+    loading.value = false
   }
-  return `${v.toFixed(1)} ${units[i]}`;
-};
+}
+
+onMounted(() => {
+  loadContainers()
+  // Auto refresh every 5 seconds
+  setInterval(loadContainers, 5000)
+})
 </script>
-
-
