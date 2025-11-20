@@ -250,14 +250,14 @@ if [ -z "$SERVER_IP" ]; then
   SERVER_IP="$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'YOUR_SERVER_IP')"
 fi
 
-# Clear progress line and show success
+# Clear progress line and show success (force output even if set -e was enabled)
 echo ""
 echo ""
 echo -e "${GREEN}✓ Installation completed successfully!${NC}"
 echo ""
 
-# Display success message (ensure it always shows)
-set +e
+# Display success message (ensure it always shows - use explicit output redirection)
+{
 cat << EOF
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
@@ -305,6 +305,7 @@ cat << EOF
 🎉  Enjoy your Bot Hosting Dashboard!
 
 EOF
+} || true
 
 # Exit successfully
 exit 0
