@@ -53,61 +53,11 @@ RUN chown -R www-data:www-data \
     storage \
     bootstrap/cache
 
-# Copy nginx config (create if doesn't exist)
-RUN mkdir -p docker
-COPY --chown=www-data:www-data <<'EOF' docker/nginx.conf
-worker_processes auto;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    sendfile on;
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    server {
-        listen 80;
-        server_name _;
-
-        root /var/www/html/public;
-
-        index index.php;
-
-        location / {
-            try_files $uri /index.php?$query_string;
-        }
-
-        location ~ \.php$ {
-            try_files $uri =404;
-            fastcgi_pass 127.0.0.1:9000;
-            fastcgi_index index.php;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            include fastcgi_params;
-        }
-    }
-}
-EOF
+# Copy nginx config
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 # Copy supervisor config
-COPY --chown=www-data:www-data <<'EOF' docker/supervisord.conf
-[supervisord]
-nodaemon=true
-
-[program:php-fpm]
-command=php-fpm
-autostart=true
-autorestart=true
-
-[program:nginx]
-command=nginx -g "daemon off;"
-autostart=true
-autorestart=true
-EOF
-
-RUN cp docker/nginx.conf /etc/nginx/nginx.conf && \
-    cp docker/supervisord.conf /etc/supervisord.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 80
 

@@ -2,19 +2,25 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+# Copy package files
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
-# Install dependencies
-RUN if [ -f package-lock.json ]; then npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install --frozen-lockfile; \
-    elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-    else npm install; fi
+# Install dependencies and fix permissions immediately
+RUN if [ -f package-lock.json ]; then \
+        npm ci && chmod -R 755 node_modules/.bin; \
+    elif [ -f pnpm-lock.yaml ]; then \
+        npm install -g pnpm && pnpm install --frozen-lockfile && chmod -R 755 node_modules/.bin; \
+    elif [ -f yarn.lock ]; then \
+        yarn install --frozen-lockfile && chmod -R 755 node_modules/.bin; \
+    else \
+        npm install && chmod -R 755 node_modules/.bin; \
+    fi
 
+# Copy application source
 COPY . .
 
-# Fix permissions for node_modules binaries and run build
-RUN chmod -R +x node_modules/.bin 2>/dev/null || true && \
-    npm run build
+# Build application
+RUN npm run build
 
 FROM nginx:1.27-alpine
 
