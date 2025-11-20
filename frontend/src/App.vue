@@ -17,25 +17,41 @@ import { useAuthStore } from './stores/auth';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const isInitializing = ref(true);
+
+// Check if we have cached installation status
+const cachedStatus = localStorage.getItem('installation_status');
+const hasCachedStatus = cachedStatus !== null;
+const isInitializing = ref(!hasCachedStatus);
 
 const showLayout = computed(() => {
   return route.path !== '/login' && route.path !== '/setup';
 });
 
 onMounted(async () => {
-  // Check installation status on app mount
-  const installed = await authStore.checkInstalled();
-  
-  // Navigate to appropriate route
-  if (!installed && route.path !== '/setup') {
-    router.push('/setup');
-  } else if (installed && route.path === '/setup') {
-    router.push('/login');
+  // If we have cached status, use it immediately
+  if (hasCachedStatus) {
+    const installed = JSON.parse(cachedStatus);
+    if (!installed && route.path !== '/setup') {
+      router.push('/setup');
+    } else if (installed && route.path === '/setup') {
+      router.push('/login');
+    }
+    // Do a background check to ensure it's still accurate
+    authStore.checkInstalled(true);
+  } else {
+    // No cache, need to check (show loading screen)
+    const installed = await authStore.checkInstalled();
+    
+    // Navigate to appropriate route
+    if (!installed && route.path !== '/setup') {
+      router.push('/setup');
+    } else if (installed && route.path === '/setup') {
+      router.push('/login');
+    }
+    
+    // Hide loading screen
+    isInitializing.value = false;
   }
-  
-  // Hide loading screen
-  isInitializing.value = false;
 });
 </script>
 

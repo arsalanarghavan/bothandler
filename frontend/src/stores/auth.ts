@@ -8,7 +8,10 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(null);
   const token = ref<string | null>(localStorage.getItem('auth_token'));
   const isAuthenticated = ref<boolean>(!!token.value);
-  const isInstalled = ref<boolean | null>(null); // null = not checked yet
+  
+  // Initialize from localStorage (instant, no API call needed)
+  const cachedStatus = localStorage.getItem('installation_status');
+  const isInstalled = ref<boolean | null>(cachedStatus ? JSON.parse(cachedStatus) : null);
   const installCheckPromise = ref<Promise<boolean> | null>(null);
 
   async function checkInstalled(force = false) {
@@ -27,11 +30,14 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const response = await axios.get(`${API_BASE}/setup/status`);
         isInstalled.value = Boolean(response.data?.installed);
+        // Cache in localStorage for future visits
+        localStorage.setItem('installation_status', JSON.stringify(isInstalled.value));
         return isInstalled.value;
       } catch (error) {
         // If API fails, assume not installed to show setup wizard
         console.error('Setup status check failed:', error);
         isInstalled.value = false;
+        localStorage.setItem('installation_status', JSON.stringify(false));
         return false;
       } finally {
         installCheckPromise.value = null;

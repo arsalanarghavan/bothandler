@@ -196,8 +196,9 @@ const submit = async () => {
   error.value = ''
   try {
     await axios.post(`${API_BASE}/setup/complete`, form.value)
-    // Update installation status in store
+    // Update installation status in store and localStorage
     authStore.isInstalled = true
+    localStorage.setItem('installation_status', JSON.stringify(true))
     router.push('/login')
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Installation failed'
