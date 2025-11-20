@@ -124,19 +124,58 @@ docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php arti
 
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 
+# Clear screen for clean output
+clear
+
+# Display success message
+cat << "EOF"
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+EOF
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀  NEXT STEP: Complete the Setup Wizard"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "========================================="
-echo "Installation finished successfully!"
-echo "========================================="
+echo "  Open this URL in your browser:"
 echo ""
-echo "Access your dashboard at:"
-echo "  - Temporary URL (IP): http://$SERVER_IP:8080/"
-echo "  - Production URL: http://YOUR_DOMAIN (after DNS setup)"
+echo "  👉  http://$SERVER_IP:8080/setup"
 echo ""
-echo "Complete the setup wizard to:"
-echo "  1. Set dashboard name and domain"
-echo "  2. Create admin account"
-echo "  3. Configure SSL automatically"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📝  What you'll need to provide:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  1. Dashboard Name    (e.g., \"My Bot Manager\")"
+echo "  2. Domain Name       (e.g., \"bothandler.example.com\")"
+echo "  3. Admin Name        (Your full name)"
+echo "  4. Admin Email       (Your email address)"
+echo "  5. Admin Password    (Strong password)"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚡ What happens automatically:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  ✓ SSL Certificate (Let's Encrypt)"
+echo "  ✓ Domain Configuration"
+echo "  ✓ Security Keys Generation"
+echo "  ✓ Service Restart"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "💡 Tips:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  • Make sure your domain DNS points to: $SERVER_IP"
+echo "  • The setup wizard takes about 30 seconds to complete"
+echo "  • After setup, login at: http://YOUR_DOMAIN/login"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🎉  Enjoy your Bot Hosting Dashboard!"
 echo ""
 
 
