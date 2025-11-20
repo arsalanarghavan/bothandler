@@ -10,14 +10,14 @@ import LoginView from '../views/LoginView.vue';
 import { useAuthStore } from '../stores/auth';
 
 const routes: RouteRecordRaw[] = [
-  { path: '/login', name: 'login', component: LoginView },
-  { path: '/setup', name: 'setup', component: SetupWizardView },
-  { path: '/', name: 'dashboard', component: DashboardOverviewView },
-  { path: '/bots', name: 'bots', component: BotsListView },
-  { path: '/bots/:id', name: 'bot-detail', component: BotDetailView, props: true },
-  { path: '/services', name: 'services', component: ServicesListView },
-  { path: '/deploy-bot', name: 'deploy-bot', component: DeployBotView },
-  { path: '/settings', name: 'settings', component: SettingsView },
+  { path: '/login', name: 'login', component: LoginView, meta: { requiresAuth: false } },
+  { path: '/setup', name: 'setup', component: SetupWizardView, meta: { requiresAuth: false, isSetup: true } },
+  { path: '/', name: 'dashboard', component: DashboardOverviewView, meta: { requiresAuth: true } },
+  { path: '/bots', name: 'bots', component: BotsListView, meta: { requiresAuth: true } },
+  { path: '/bots/:id', name: 'bot-detail', component: BotDetailView, props: true, meta: { requiresAuth: true } },
+  { path: '/services', name: 'services', component: ServicesListView, meta: { requiresAuth: true } },
+  { path: '/deploy-bot', name: 'deploy-bot', component: DeployBotView, meta: { requiresAuth: true } },
+  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
@@ -28,32 +28,35 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  // Public routes that don't need any checks
-  const publicRoutes = ['/login', '/setup'];
-  const isPublicRoute = publicRoutes.includes(to.path);
-  
-  // If going to public route and already authenticated, redirect to home
-  if (isPublicRoute && authStore.isAuthenticated) {
-    return next('/');
+  // Skip checks for setup and login routes on first navigation
+  // (App.vue handles initial check)
+  if (!from.name && (to.path === '/setup' || to.path === '/login')) {
+    return next();
   }
   
-  // If going to setup and already installed, redirect to login
-  if (to.path === '/setup') {
-    const installed = await authStore.checkInstalled();
-    if (installed) {
-      return next('/login');
+  // Check installation status (cached in auth store)
+  const isInstalled = await authStore.checkInstalled();
+  
+  // If not installed, only allow /setup
+  if (!isInstalled) {
+    if (to.path !== '/setup') {
+      return next('/setup');
     }
     return next();
   }
   
-  // For all non-public routes, check installation first
-  if (!isPublicRoute) {
-    const installed = await authStore.checkInstalled();
-    if (!installed) {
-      return next('/setup');
-    }
-    
-    // Then check authentication
+  // If going to setup but already installed, redirect to login
+  if (to.path === '/setup' && isInstalled) {
+    return next('/login');
+  }
+  
+  // If going to login and already authenticated, redirect to home
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return next('/');
+  }
+  
+  // For protected routes, check authentication
+  if (to.meta.requiresAuth) {
     const isAuth = await authStore.checkAuth();
     if (!isAuth) {
       return next('/login');

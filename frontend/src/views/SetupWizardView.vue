@@ -155,8 +155,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const form = ref({
@@ -194,6 +196,8 @@ const submit = async () => {
   error.value = ''
   try {
     await axios.post(`${API_BASE}/setup/complete`, form.value)
+    // Update installation status in store
+    authStore.isInstalled = true
     router.push('/login')
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Installation failed'
