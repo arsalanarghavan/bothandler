@@ -195,13 +195,28 @@ const submit = async () => {
   submitting.value = true
   error.value = ''
   try {
-    await axios.post(`${API_BASE}/setup/complete`, form.value)
+    const response = await axios.post(`${API_BASE}/setup/complete`, form.value)
+    console.log('Setup response:', response.data)
+    
     // Update installation status in store and localStorage
     authStore.isInstalled = true
     localStorage.setItem('installation_status', JSON.stringify(true))
-    router.push('/login')
+    
+    // Show success message briefly before redirect
+    setTimeout(() => {
+      router.push('/login')
+    }, 500)
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Installation failed'
+    console.error('Setup error:', err.response?.data)
+    
+    // Show detailed error message
+    if (err.response?.data?.errors) {
+      // Validation errors
+      const errors = Object.values(err.response.data.errors).flat()
+      error.value = errors.join(', ')
+    } else {
+      error.value = err.response?.data?.message || 'Installation failed. Please check server logs.'
+    }
   } finally {
     submitting.value = false
   }
