@@ -142,11 +142,19 @@ class SetupController extends Controller
         // Update bot-manager .env
         $this->updateEnvFile($botManagerEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
 
-        // Trigger docker restart using docker socket
+        // Trigger docker operations using docker socket
         try {
             $dockerSocket = '/var/run/docker.sock';
+            $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
+            
             if (file_exists($dockerSocket) && is_readable($dockerSocket)) {
-                $containersToRestart = ['api-gateway', 'frontend', 'monitoring-service', 'bot-manager'];
+                // Rebuild frontend with new domain (in background)
+                \Log::info('Rebuilding frontend with new domain...');
+                $rebuildCommand = "cd " . escapeshellarg($projectRoot) . " && docker-compose build frontend > /dev/null 2>&1 && docker-compose up -d frontend > /dev/null 2>&1 &";
+                shell_exec($rebuildCommand);
+                
+                // Restart other containers
+                $containersToRestart = ['api-gateway', 'monitoring-service', 'bot-manager'];
                 foreach ($containersToRestart as $container) {
                     // Find container by name pattern using docker ps
                     $output = shell_exec("docker ps --format '{{.Names}}' 2>&1");
@@ -172,7 +180,7 @@ class SetupController extends Controller
                 \Log::warning('Docker socket not found or not readable at ' . $dockerSocket);
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to restart containers: ' . $e->getMessage());
+            \Log::warning('Failed to restart/rebuild containers: ' . $e->getMessage());
             // Don't fail setup if restart fails
         }
     }

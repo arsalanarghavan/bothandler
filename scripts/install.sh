@@ -59,6 +59,7 @@ else
   cd "$INSTALL_DIR"
 fi
 PROJECT_DIR="$INSTALL_DIR"
+export PROJECT_ROOT="$INSTALL_DIR"
 
 # Step 2: Update System (20%)
 show_progress 2 10 "Updating system packages..."
