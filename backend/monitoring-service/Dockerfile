@@ -29,18 +29,20 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Copy composer files
 COPY composer.json composer.lock* ./
 
-# Install composer dependencies
-# Allow plugins and handle missing lock file gracefully
+# Install composer dependencies without running scripts (artisan not available yet)
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
-    --optimize-autoloader \
+    --no-scripts \
     --prefer-dist \
-    || composer update --no-dev --no-interaction --no-progress --optimize-autoloader
+    || composer update --no-dev --no-interaction --no-progress --no-scripts
 
 # Copy application code
 COPY . .
+
+# Now run composer scripts (package discovery, etc.)
+RUN composer dump-autoload --optimize --no-dev
 
 # Set permissions
 RUN chown -R www-data:www-data \
