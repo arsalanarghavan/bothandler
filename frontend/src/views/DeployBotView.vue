@@ -127,7 +127,7 @@ import { Separator } from '@/components/ui/separator'
 import { Rocket } from 'lucide-vue-next'
 
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const form = ref({
   name: '',

@@ -24,6 +24,7 @@ services:
     environment:
       NGINX_PROXY_CONTAINER: nginx-proxy
       ACME_CA_URI: https://acme-v02.api.letsencrypt.org/directory
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - nginx-certs:/etc/nginx/certs
@@ -37,6 +38,8 @@ services:
     build:
       context: ./backend/api-gateway
       dockerfile: Dockerfile
+    env_file:
+      - ./backend/api-gateway/.env
     environment:
       VIRTUAL_HOST: api.${DASHBOARD_DOMAIN:-example.com}
       LETSENCRYPT_HOST: api.${DASHBOARD_DOMAIN:-example.com}
@@ -47,6 +50,12 @@ services:
     networks:
       - proxy
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   monitoring-service:
@@ -59,6 +68,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   bot-manager:
@@ -72,12 +87,21 @@ services:
       - ./bots:/var/bots
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: https://api.${DASHBOARD_DOMAIN:-example.com}/api
+        VITE_DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-example.com}
     environment:
       VIRTUAL_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
       LETSENCRYPT_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
@@ -91,6 +115,12 @@ services:
     networks:
       - proxy
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
 networks:

@@ -134,7 +134,7 @@ import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Server, Activity, AlertCircle, Cpu, Download, Upload } from 'lucide-vue-next'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const summary = ref<any>({})
 const loading = ref(false)

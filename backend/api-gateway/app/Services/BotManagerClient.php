@@ -15,6 +15,9 @@ class BotManagerClient
         $this->client = new Client([
             'base_uri' => rtrim($baseUri, '/') . '/api/',
             'timeout' => 5.0,
+            'headers' => [
+                'X-Internal-API-Key' => env('INTERNAL_API_KEY', 'change-this-in-production'),
+            ],
         ]);
     }
 

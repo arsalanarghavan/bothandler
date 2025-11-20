@@ -2,6 +2,14 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+# Build arguments for Vite env variables
+ARG VITE_API_BASE_URL=https://api.example.com/api
+ARG VITE_DASHBOARD_DOMAIN=example.com
+
+# Set as environment variables for build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_DASHBOARD_DOMAIN=$VITE_DASHBOARD_DOMAIN
+
 # Copy package files
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 

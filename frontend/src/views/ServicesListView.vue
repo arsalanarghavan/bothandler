@@ -99,7 +99,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Download, Upload } from 'lucide-vue-next'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const containers = ref<any[]>([])
 const loading = ref(false)

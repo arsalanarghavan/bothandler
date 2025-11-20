@@ -130,7 +130,7 @@ import { ArrowLeft, RefreshCw, ChevronDown } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com/api'
 
 const bot = ref<any>({})
 const deployments = ref<any[]>([])
