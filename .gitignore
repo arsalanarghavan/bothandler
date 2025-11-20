@@ -1,0 +1,26 @@
+# Root .env file (contains sensitive domain/email)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Bots directory (user-deployed services)
+bots/*
+!bots/.gitkeep
