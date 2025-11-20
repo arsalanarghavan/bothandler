@@ -13,6 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scr
 این دستور به طور خودکار:
 - Repository را clone می‌کند
 - Docker و Docker Compose را نصب می‌کند
+- یک کلید امنیتی (INTERNAL_API_KEY) برای ارتباط بین سرویس‌ها تولید می‌کند
 - تمام سرویس‌ها را راه‌اندازی می‌کند
 - Migrations را اجرا می‌کند
 
@@ -25,6 +26,33 @@ curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scr
 # نصب از branch دیگر (پیش‌فرض: main)
 curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scripts/install.sh | BRANCH=develop sudo bash
 ```
+
+## 🔐 امنیت
+
+### INTERNAL_API_KEY
+
+برای امنیت ارتباط بین سرویس‌ها (api-gateway، monitoring-service، bot-manager)، یک کلید مشترک استفاده می‌شود.
+
+**تنظیم خودکار:**
+- در زمان نصب: اسکریپت نصب به صورت خودکار یک کلید 64 کاراکتری تولید و در همه سرویس‌ها تنظیم می‌کند
+- در زمان Setup Wizard: یک کلید جدید تولید و در همه سرویس‌ها جایگزین می‌شود
+
+**تنظیم دستی (در صورت نیاز):**
+```bash
+# تولید یک کلید جدید
+NEW_KEY=$(openssl rand -hex 32)
+
+# تنظیم در همه سرویس‌ها
+for service in api-gateway monitoring-service bot-manager; do
+  echo "INTERNAL_API_KEY=$NEW_KEY" >> /opt/bothandler/backend/$service/.env
+done
+
+# Restart سرویس‌ها
+cd /opt/bothandler
+docker-compose restart api-gateway monitoring-service bot-manager
+```
+
+**⚠️ مهم:** این کلید باید در همه 3 سرویس یکسان باشد.
 
 ## 📦 آپدیت پروژه
 

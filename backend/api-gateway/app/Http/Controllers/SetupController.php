@@ -49,12 +49,51 @@ class SetupController extends Controller
             ['value' => $validated['dashboard_domain']]
         );
 
+        // Generate and set internal API key for service-to-service communication
+        $this->setupInternalApiKey();
+
         // Update domain in .env file
         $this->updateDomainEnv($validated['dashboard_domain']);
 
         return response()->json([
             'status' => 'ok',
         ]);
+    }
+
+    protected function setupInternalApiKey(): void
+    {
+        // Generate a secure random key
+        $apiKey = bin2hex(random_bytes(32)); // 64 character hex string
+        
+        // Update all service .env files with the same key
+        $services = ['api-gateway', 'monitoring-service', 'bot-manager'];
+        
+        foreach ($services as $service) {
+            $envPath = base_path("../../backend/{$service}/.env");
+            
+            try {
+                if (file_exists($envPath)) {
+                    $content = file_get_contents($envPath);
+                    
+                    // Check if INTERNAL_API_KEY exists
+                    if (preg_match('/^INTERNAL_API_KEY=.*$/m', $content)) {
+                        // Replace existing
+                        $content = preg_replace(
+                            '/^INTERNAL_API_KEY=.*$/m',
+                            "INTERNAL_API_KEY={$apiKey}",
+                            $content
+                        );
+                    } else {
+                        // Append new
+                        $content .= "\nINTERNAL_API_KEY={$apiKey}\n";
+                    }
+                    
+                    file_put_contents($envPath, $content);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Failed to update INTERNAL_API_KEY for {$service}: " . $e->getMessage());
+            }
+        }
     }
 
     protected function updateDomainEnv(string $domain): void
@@ -65,8 +104,8 @@ class SetupController extends Controller
         try {
             file_put_contents($envPath, $content);
             
-            // Restart frontend container to apply new domain
-            exec('cd ' . base_path('../..') . ' && docker-compose restart frontend > /dev/null 2>&1 &');
+            // Restart containers to apply new configurations
+            exec('cd ' . base_path('../..') . ' && docker-compose restart api-gateway monitoring-service bot-manager frontend > /dev/null 2>&1 &');
         } catch (\Exception $e) {
             // Log error but don't fail the setup
             \Log::warning('Failed to update domain: ' . $e->getMessage());

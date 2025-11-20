@@ -77,6 +77,25 @@ if [ ! -f "frontend/.env" ] && [ -f "frontend/.env.example" ]; then
   echo "Frontend .env created from .env.example"
 fi
 
+# Generate shared INTERNAL_API_KEY for service-to-service communication
+echo "Generating shared INTERNAL_API_KEY for services..."
+INTERNAL_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 64)
+
+for service in api-gateway monitoring-service bot-manager; do
+  SERVICE_ENV="backend/$service/.env"
+  if [ -f "$SERVICE_ENV" ]; then
+    # Check if INTERNAL_API_KEY already exists
+    if grep -q "^INTERNAL_API_KEY=" "$SERVICE_ENV"; then
+      # Replace existing
+      sed -i "s|^INTERNAL_API_KEY=.*|INTERNAL_API_KEY=$INTERNAL_API_KEY|" "$SERVICE_ENV"
+    else
+      # Append new
+      echo "INTERNAL_API_KEY=$INTERNAL_API_KEY" >> "$SERVICE_ENV"
+    fi
+    echo "Set INTERNAL_API_KEY for $service"
+  fi
+done
+
 echo "Stopping and removing any existing containers..."
 cd "$PROJECT_DIR"
 # Force remove ALL containers with "bothandler" in their name (including orphaned ones)
