@@ -234,7 +234,7 @@ for i in 1 2 3; do
     fi
 done
 
-# Re-enable set -e (but allow errors for IP detection)
+# Keep set -e disabled for IP detection and success message
 set +e
 
 if [ $MIGRATION_FAILED -eq 1 ]; then
@@ -250,16 +250,14 @@ if [ -z "$SERVER_IP" ]; then
   SERVER_IP="$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'YOUR_SERVER_IP')"
 fi
 
-# Re-enable set -e for final steps
-set -e
-
 # Clear progress line and show success
 echo ""
 echo ""
 echo -e "${GREEN}✓ Installation completed successfully!${NC}"
 echo ""
 
-# Display success message
+# Display success message (ensure it always shows)
+set +e
 cat << EOF
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
@@ -307,3 +305,6 @@ cat << EOF
 🎉  Enjoy your Bot Hosting Dashboard!
 
 EOF
+
+# Exit successfully
+exit 0
