@@ -143,27 +143,69 @@ docker-compose -f "$PROJECT_DIR/docker-compose.yml" pull &>/dev/null || true
 
 # Step 8: Build Services (80%)
 show_progress 8 10 "Building application services..."
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" build &>/dev/null
+echo ""
+echo -e "${YELLOW}Building Docker images (this may take several minutes)...${NC}"
+if ! docker-compose -f "$PROJECT_DIR/docker-compose.yml" build; then
+  echo ""
+  echo -e "${RED}Error: Build failed. Check the output above for details.${NC}"
+  exit 1
+fi
 
 # Step 9: Start Services (90%)
 show_progress 9 10 "Starting all services..."
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d &>/dev/null
+if ! docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d; then
+  echo ""
+  echo -e "${RED}Error: Failed to start services.${NC}"
+  exit 1
+fi
 sleep 10
 
 # Step 10: Initialize Database (100%)
 show_progress 10 10 "Initializing database..."
-# Wait for services to be ready
-sleep 10
+echo ""
+echo -e "${YELLOW}Waiting for services to be ready...${NC}"
+# Wait for services to be ready (check if containers are running)
+for i in {1..30}; do
+  if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps | grep -q "Up"; then
+    break
+  fi
+  sleep 2
+done
+
 # Run migrations (retry if needed)
+echo -e "${YELLOW}Running database migrations...${NC}"
+MIGRATION_FAILED=0
+
 for i in 1 2 3; do
-    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
+        break
+    else
+        [ $i -eq 3 ] && MIGRATION_FAILED=1
+        sleep 5
+    fi
 done
+
 for i in 1 2 3; do
-    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
+        break
+    else
+        [ $i -eq 3 ] && MIGRATION_FAILED=1
+        sleep 5
+    fi
 done
+
 for i in 1 2 3; do
-    docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force >/dev/null 2>&1 && break || sleep 5
+    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
+        break
+    else
+        [ $i -eq 3 ] && MIGRATION_FAILED=1
+        sleep 5
+    fi
 done
+
+if [ $MIGRATION_FAILED -eq 1 ]; then
+  echo -e "${YELLOW}Warning: Some migrations may have failed. You can run them manually later.${NC}"
+fi
 
 # Get server IP (try multiple methods)
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
