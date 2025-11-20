@@ -19,9 +19,6 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy assets directory
-COPY public/assets /usr/share/nginx/html/assets
-
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

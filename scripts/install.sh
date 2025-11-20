@@ -48,8 +48,10 @@ if ! command -v docker-compose >/dev/null 2>&1; then
   sudo chmod +x /usr/local/bin/docker-compose
 fi
 
-echo "Preparing Laravel service environments (.env & APP_KEY)..."
+echo "Preparing service environments (.env files)..."
 cd "$PROJECT_DIR"
+
+# Prepare Laravel backend services
 for service in api-gateway monitoring-service bot-manager; do
   SERVICE_DIR="backend/$service"
   if [ -d "$SERVICE_DIR" ]; then
@@ -68,6 +70,12 @@ for service in api-gateway monitoring-service bot-manager; do
     fi
   fi
 done
+
+# Prepare frontend environment
+if [ ! -f "frontend/.env" ] && [ -f "frontend/.env.example" ]; then
+  cp "frontend/.env.example" "frontend/.env"
+  echo "Frontend .env created from .env.example"
+fi
 
 echo "Stopping and removing any existing containers..."
 cd "$PROJECT_DIR"

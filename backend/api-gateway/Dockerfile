@@ -1,6 +1,6 @@
 FROM php:8.3-fpm-alpine
 
-# Install system dependencies and PHP extensions
+# Install system dependencies
 RUN apk add --no-cache \
     git \
     curl \
@@ -10,7 +10,11 @@ RUN apk add --no-cache \
     bash \
     libxml2-dev \
     oniguruma-dev \
-    && docker-php-ext-install \
+    nginx \
+    supervisor
+
+# Install PHP extensions
+RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
     zip \
@@ -23,13 +27,13 @@ RUN apk add --no-cache \
 
 WORKDIR /var/www/html
 
-# Copy composer from official image
+# Copy composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy composer files
 COPY composer.json composer.lock* ./
 
-# Install composer dependencies without running scripts (artisan not available yet)
+# Install dependencies without scripts
 RUN composer install \
     --no-dev \
     --no-interaction \
@@ -41,7 +45,7 @@ RUN composer install \
 # Copy application code
 COPY . .
 
-# Now run composer scripts (package discovery, etc.)
+# Run composer autoload
 RUN composer dump-autoload --optimize --no-dev
 
 # Set permissions
@@ -49,6 +53,12 @@ RUN chown -R www-data:www-data \
     storage \
     bootstrap/cache
 
-EXPOSE 9000
+# Copy nginx config
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
-CMD ["php-fpm"]
+# Copy supervisor config
+COPY docker/supervisord.conf /etc/supervisord.conf
+
+EXPOSE 80
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
