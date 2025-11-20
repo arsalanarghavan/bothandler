@@ -4,30 +4,26 @@
 
 ## 🚀 نصب اولیه روی سرور
 
-### روش یک خطی (توصیه می‌شود)
+### نصب یک‌خطی (توصیه می‌شود)
 
 ```bash
-bash -c "cd /opt && rm -rf bothandler && git clone https://github.com/arsalanarghavan/bothandler.git /opt/bothandler && cd /opt/bothandler && chmod +x scripts/install.sh && ./scripts/install.sh"
+curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scripts/install.sh | sudo bash
 ```
 
-یا با curl:
+این دستور به طور خودکار:
+- Repository را clone می‌کند
+- Docker و Docker Compose را نصب می‌کند
+- تمام سرویس‌ها را راه‌اندازی می‌کند
+- Migrations را اجرا می‌کند
+
+### تنظیمات اختیاری
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scripts/install.sh | bash
-```
+# تغییر مسیر نصب (پیش‌فرض: /opt/bothandler)
+curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scripts/install.sh | INSTALL_DIR=/var/www/bothandler sudo bash
 
-### روش دستی
-
-```bash
-# 1. کلون کردن پروژه
-cd /opt
-rm -rf bothandler
-git clone https://github.com/arsalanarghavan/bothandler.git /opt/bothandler
-cd /opt/bothandler
-
-# 2. اجرای اسکریپت نصب
-chmod +x scripts/install.sh
-./scripts/install.sh
+# نصب از branch دیگر (پیش‌فرض: main)
+curl -fsSL https://raw.githubusercontent.com/arsalanarghavan/bothandler/main/scripts/install.sh | BRANCH=develop sudo bash
 ```
 
 ## 📦 آپدیت پروژه
