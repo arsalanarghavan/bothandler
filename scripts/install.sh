@@ -234,8 +234,8 @@ for i in 1 2 3; do
     fi
 done
 
-# Re-enable set -e
-set -e
+# Re-enable set -e (but allow errors for IP detection)
+set +e
 
 if [ $MIGRATION_FAILED -eq 1 ]; then
   echo -e "${YELLOW}Warning: Some migrations may have failed. You can run them manually later.${NC}" >&2
@@ -249,6 +249,9 @@ fi
 if [ -z "$SERVER_IP" ]; then
   SERVER_IP="$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'YOUR_SERVER_IP')"
 fi
+
+# Re-enable set -e for final steps
+set -e
 
 # Clear progress line and show success
 echo ""
