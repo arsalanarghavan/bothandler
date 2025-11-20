@@ -32,6 +32,9 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx config

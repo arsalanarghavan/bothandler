@@ -145,24 +145,31 @@ class SetupController extends Controller
         // Trigger docker restart using docker socket
         try {
             $dockerSocket = '/var/run/docker.sock';
-            if (file_exists($dockerSocket)) {
+            if (file_exists($dockerSocket) && is_readable($dockerSocket)) {
                 $containersToRestart = ['api-gateway', 'frontend', 'monitoring-service', 'bot-manager'];
                 foreach ($containersToRestart as $container) {
                     // Find container by name pattern using docker ps
-                    $output = [];
-                    $returnCode = 0;
-                    exec("docker ps --format '{{.Names}}' 2>&1", $output, $returnCode);
-                    if ($returnCode === 0) {
-                        foreach ($output as $line) {
-                            if (preg_match("/bothandler[_-]{$container}|{$container}/i", $line)) {
-                                exec("docker restart " . escapeshellarg($line) . " > /dev/null 2>&1 &");
+                    $output = shell_exec("docker ps --format '{{.Names}}' 2>&1");
+                    if ($output) {
+                        $lines = explode("\n", trim($output));
+                        foreach ($lines as $line) {
+                            $line = trim($line);
+                            if (empty($line)) {
+                                continue;
+                            }
+                            // Match container names like: bothandler_api-gateway_1, bothandler-api-gateway-1, api-gateway
+                            if (preg_match("/bothandler[_-]?{$container}[_-]?\d*|{$container}/i", $line)) {
+                                $containerName = escapeshellarg($line);
+                                // Run restart in background
+                                shell_exec("docker restart {$containerName} > /dev/null 2>&1 &");
+                                \Log::info("Restarting container: {$line}");
                                 break;
                             }
                         }
                     }
                 }
             } else {
-                \Log::warning('Docker socket not found at ' . $dockerSocket);
+                \Log::warning('Docker socket not found or not readable at ' . $dockerSocket);
             }
         } catch (\Exception $e) {
             \Log::warning('Failed to restart containers: ' . $e->getMessage());
@@ -178,13 +185,23 @@ class SetupController extends Controller
             }
 
             $contents = file_get_contents($path);
-            $newContents = preg_replace("/^{$key}=.*$/m", "{$key}=\"{$value}\"", $contents, 1, $count);
+            
+            // Escape special regex characters in key
+            $escapedKey = preg_quote($key, '/');
+            
+            // Match key=value (with or without quotes, with optional whitespace)
+            $pattern = "/^{$escapedKey}\s*=\s*.*$/m";
+            $replacement = "{$key}=\"{$value}\"";
+            
+            $newContents = preg_replace($pattern, $replacement, $contents, 1, $count);
 
             if ($count === 0) {
-                $newContents .= "\n{$key}=\"{$value}\"\n";
+                // Key not found, append it
+                $newContents = rtrim($contents) . "\n{$key}=\"{$value}\"\n";
             }
 
             file_put_contents($path, $newContents);
+            \Log::info("Updated {$key} in {$path}");
         } catch (\Exception $e) {
             \Log::warning("Failed to update {$key} in {$path}: " . $e->getMessage());
         }
