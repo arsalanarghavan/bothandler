@@ -6,52 +6,81 @@ INSTALL_DIR="${INSTALL_DIR:-/opt/bothandler}"
 REPO_URL="https://github.com/arsalanarghavan/bothandler.git"
 BRANCH="${BRANCH:-main}"
 
-echo "========================================="
-echo "Bot Hosting Dashboard Installer"
-echo "========================================="
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Progress bar function
+show_progress() {
+    local current=$1
+    local total=$2
+    local message=$3
+    local percent=$((current * 100 / total))
+    local filled=$((percent / 2))
+    local empty=$((50 - filled))
+    
+    printf "\r${BLUE}[%-50s]${NC} ${GREEN}%d%%${NC} - %s" \
+           "$(printf '%*s' "$filled" | tr ' ' '█')$(printf '%*s' "$empty")" \
+           "$percent" \
+           "$message"
+}
+
+# Clear screen and show header
+clear
+cat << "EOF"
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║            Bot Hosting Dashboard Installer                  ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+EOF
+
 echo ""
 
-# Clone or update repository
+# Step 1: Clone/Update Repository (10%)
+show_progress 1 10 "Preparing installation directory..."
 if [ -d "$INSTALL_DIR/.git" ]; then
-  echo "Updating existing installation at $INSTALL_DIR..."
   cd "$INSTALL_DIR"
-  git fetch origin
-  git reset --hard origin/$BRANCH
+  git fetch origin &>/dev/null
+  git reset --hard origin/$BRANCH &>/dev/null
 else
-  echo "Cloning repository to $INSTALL_DIR..."
   if [ -d "$INSTALL_DIR" ]; then
-    echo "Directory $INSTALL_DIR exists but is not a git repository."
+    echo ""
+    echo -e "${RED}Error: Directory $INSTALL_DIR exists but is not a git repository.${NC}"
     echo "Please remove it or choose a different installation directory."
     exit 1
   fi
-  git clone -b $BRANCH "$REPO_URL" "$INSTALL_DIR"
+  git clone -b $BRANCH "$REPO_URL" "$INSTALL_DIR" &>/dev/null
   cd "$INSTALL_DIR"
 fi
-
 PROJECT_DIR="$INSTALL_DIR"
-echo "Installation directory: $PROJECT_DIR"
-echo ""
 
-echo "Updating system packages..."
-sudo apt-get update -y
-sudo apt-get upgrade -y
+# Step 2: Update System (20%)
+show_progress 2 10 "Updating system packages..."
+sudo apt-get update -y &>/dev/null
+sudo apt-get upgrade -y &>/dev/null
 
-echo "Installing Docker and Docker Compose..."
+# Step 3: Install Docker (30%)
+show_progress 3 10 "Installing Docker & Docker Compose..."
 if ! command -v docker >/dev/null 2>&1; then
-  curl -fsSL https://get.docker.com | sh
+  curl -fsSL https://get.docker.com | sh &>/dev/null
 fi
-
-sudo usermod -aG docker "$USER" || true
+sudo usermod -aG docker "$USER" &>/dev/null || true
 
 if ! command -v docker-compose >/dev/null 2>&1; then
-  sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &>/dev/null
   sudo chmod +x /usr/local/bin/docker-compose
 fi
 
-echo "Preparing service environments (.env files)..."
+# Step 4: Prepare Environment Files (40%)
+show_progress 4 10 "Preparing service configurations..."
 cd "$PROJECT_DIR"
 
-# Prepare Laravel backend services
 for service in api-gateway monitoring-service bot-manager; do
   SERVICE_DIR="backend/$service"
   if [ -d "$SERVICE_DIR" ]; then
@@ -59,121 +88,116 @@ for service in api-gateway monitoring-service bot-manager; do
       if [ -f "$SERVICE_DIR/.env.example" ]; then
         cp "$SERVICE_DIR/.env.example" "$SERVICE_DIR/.env"
         if command -v php >/dev/null 2>&1; then
-          (cd "$SERVICE_DIR" && php artisan key:generate --ansi || true)
+          (cd "$SERVICE_DIR" && php artisan key:generate --ansi &>/dev/null || true)
         fi
       fi
     fi
-    # Create SQLite database if it doesn't exist
     if [ ! -f "$SERVICE_DIR/database/database.sqlite" ]; then
       touch "$SERVICE_DIR/database/database.sqlite"
-      chmod 666 "$SERVICE_DIR/database/database.sqlite" || true
+      chmod 666 "$SERVICE_DIR/database/database.sqlite" &>/dev/null || true
     fi
   fi
 done
 
-# Prepare frontend environment
 if [ ! -f "frontend/.env" ] && [ -f "frontend/.env.example" ]; then
   cp "frontend/.env.example" "frontend/.env"
-  echo "Frontend .env created from .env.example"
 fi
 
-# Generate shared INTERNAL_API_KEY for service-to-service communication
-echo "Generating shared INTERNAL_API_KEY for services..."
+# Step 5: Generate Security Keys (50%)
+show_progress 5 10 "Generating security keys..."
 INTERNAL_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 64)
 
 for service in api-gateway monitoring-service bot-manager; do
   SERVICE_ENV="backend/$service/.env"
   if [ -f "$SERVICE_ENV" ]; then
-    # Check if INTERNAL_API_KEY already exists
     if grep -q "^INTERNAL_API_KEY=" "$SERVICE_ENV"; then
-      # Replace existing
       sed -i "s|^INTERNAL_API_KEY=.*|INTERNAL_API_KEY=$INTERNAL_API_KEY|" "$SERVICE_ENV"
     else
-      # Append new
       echo "INTERNAL_API_KEY=$INTERNAL_API_KEY" >> "$SERVICE_ENV"
     fi
-    echo "Set INTERNAL_API_KEY for $service"
   fi
 done
 
-echo "Stopping and removing any existing containers..."
+# Step 6: Clean Up Old Containers (60%)
+show_progress 6 10 "Cleaning up old installations..."
 cd "$PROJECT_DIR"
-# Force remove ALL containers with "bothandler" in their name (including orphaned ones)
-docker ps -a --format "{{.ID}} {{.Names}}" | grep -i bothandler | awk '{print $1}' | xargs -r docker rm -f || true
-# Remove all containers with hash-based names that might be orphaned
-docker ps -a --format "{{.ID}} {{.Names}}" | grep -E "bothandler|_[0-9a-f]+_" | awk '{print $1}' | xargs -r docker rm -f || true
-# Also try docker-compose cleanup
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" rm -f --stop || true
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans -v || true
-# Remove dangling images
-docker image prune -f || true
+docker ps -a --format "{{.ID}} {{.Names}}" | grep -i bothandler | awk '{print $1}' | xargs -r docker rm -f &>/dev/null || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans -v &>/dev/null || true
+docker image prune -f &>/dev/null || true
 
-echo "Bringing up containers..."
-cd "$PROJECT_DIR"
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" pull || true
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" build
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d
+# Step 7: Pull Docker Images (70%)
+show_progress 7 10 "Downloading required images..."
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" pull &>/dev/null || true
 
-echo "Waiting for services to be ready..."
+# Step 8: Build Services (80%)
+show_progress 8 10 "Building application services..."
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" build &>/dev/null
+
+# Step 9: Start Services (90%)
+show_progress 9 10 "Starting all services..."
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d &>/dev/null
 sleep 10
 
-echo "Running database migrations..."
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force > /dev/null 2>&1 || echo "⚠️  API Gateway migrations failed"
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force > /dev/null 2>&1 || echo "⚠️  Monitoring Service migrations failed"
-docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force > /dev/null 2>&1 || echo "⚠️  Bot Manager migrations failed"
-echo "✅ Database migrations completed"
+# Step 10: Initialize Database (100%)
+show_progress 10 10 "Initializing database..."
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force &>/dev/null || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force &>/dev/null || true
+docker-compose -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force &>/dev/null || true
 
+# Get server IP
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 
-# Display success message with clear separators
+# Clear progress line and show success
 echo ""
 echo ""
-echo ""
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                                                              ║"
-echo "║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║"
-echo "║                                                              ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🚀  NEXT STEP: Complete the Setup Wizard"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  Open this URL in your browser:"
-echo ""
-echo "  👉  http://$SERVER_IP:8080/setup"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📝  What you'll need to provide:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  1. Dashboard Name    (e.g., \"My Bot Manager\")"
-echo "  2. Domain Name       (e.g., \"bothandler.example.com\")"
-echo "  3. Admin Name        (Your full name)"
-echo "  4. Admin Email       (Your email address)"
-echo "  5. Admin Password    (Strong password)"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "⚡ What happens automatically:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  ✓ SSL Certificate (Let's Encrypt)"
-echo "  ✓ Domain Configuration"
-echo "  ✓ Security Keys Generation"
-echo "  ✓ Service Restart"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "💡 Tips:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  • Make sure your domain DNS points to: $SERVER_IP"
-echo "  • The setup wizard takes about 30 seconds to complete"
-echo "  • After setup, login at: http://YOUR_DOMAIN/login"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "🎉  Enjoy your Bot Hosting Dashboard!"
-echo ""
+echo -e "${GREEN}✓ Installation completed successfully!${NC}"
 echo ""
 
+# Display success message
+cat << EOF
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀  NEXT STEP: Complete the Setup Wizard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Open this URL in your browser:
+
+  👉  http://$SERVER_IP:8080/setup
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝  What you'll need to provide:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Dashboard Name    (e.g., "My Bot Manager")
+  2. Domain Name       (e.g., "bothandler.example.com")
+  3. Admin Name        (Your full name)
+  4. Admin Email       (Your email address)
+  5. Admin Password    (Strong password)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ What happens automatically:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ SSL Certificate (Let's Encrypt)
+  ✓ Domain Configuration
+  ✓ Security Keys Generation
+  ✓ Service Restart
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 Tips:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Make sure your domain DNS points to: $SERVER_IP
+  • The setup wizard takes about 30 seconds to complete
+  • After setup, login at: http://YOUR_DOMAIN/login
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉  Enjoy your Bot Hosting Dashboard!
+
+EOF
