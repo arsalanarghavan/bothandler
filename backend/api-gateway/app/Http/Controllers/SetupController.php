@@ -49,9 +49,28 @@ class SetupController extends Controller
             ['value' => $validated['dashboard_domain']]
         );
 
+        // Update domain in .env file
+        $this->updateDomainEnv($validated['dashboard_domain']);
+
         return response()->json([
             'status' => 'ok',
         ]);
+    }
+
+    protected function updateDomainEnv(string $domain): void
+    {
+        $envPath = base_path('../../.env');
+        $content = "DASHBOARD_DOMAIN={$domain}\n";
+        
+        try {
+            file_put_contents($envPath, $content);
+            
+            // Restart frontend container to apply new domain
+            exec('cd ' . base_path('../..') . ' && docker-compose restart frontend > /dev/null 2>&1 &');
+        } catch (\Exception $e) {
+            // Log error but don't fail the setup
+            \Log::warning('Failed to update domain: ' . $e->getMessage());
+        }
     }
 }
 
