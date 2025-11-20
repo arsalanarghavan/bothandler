@@ -1,78 +1,79 @@
 <template>
-  <div class="page">
-    <div class="main-content app-content">
-      <div class="side-app">
-        <div class="main-container container-fluid">
-          <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">ورود به داشبورد</h3>
-                </div>
-                <div class="card-body">
-                  <form @submit.prevent="handleLogin">
-                    <div class="mb-3">
-                      <label class="form-label">ایمیل</label>
-                      <input v-model="form.email" type="email" class="form-control" required />
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">رمز عبور</label>
-                      <input v-model="form.password" type="password" class="form-control" required />
-                    </div>
-                    <div v-if="error" class="alert alert-danger">{{ error }}</div>
-                    <button type="submit" class="btn btn-primary w-100" :disabled="loading">
-                      {{ loading ? 'در حال ورود...' : 'ورود' }}
-                    </button>
-                  </form>
-                </div>
-              </div>
+  <div class="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+    <div class="w-full max-w-sm">
+      <Card>
+        <CardHeader class="space-y-1">
+          <CardTitle class="text-2xl">Login</CardTitle>
+          <CardDescription>Enter your credentials to access the dashboard</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form @submit.prevent="handleLogin" class="space-y-4">
+            <div class="space-y-2">
+              <Label for="email">Email</Label>
+              <Input 
+                id="email" 
+                v-model="form.email" 
+                type="email" 
+                placeholder="admin@example.com"
+                required 
+                :disabled="loading"
+              />
             </div>
-          </div>
-        </div>
-      </div>
+            <div class="space-y-2">
+              <Label for="password">Password</Label>
+              <Input 
+                id="password"
+                v-model="form.password" 
+                type="password" 
+                placeholder="••••••••"
+                required
+                :disabled="loading"
+              />
+            </div>
+            <div v-if="error" class="rounded-lg bg-destructive/15 p-3 text-sm text-destructive">
+              {{ error }}
+            </div>
+            <Button type="submit" class="w-full" :disabled="loading">
+              <span v-if="loading">Logging in...</span>
+              <span v-else>Login</span>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
-const router = useRouter();
-const authStore = useAuthStore();
+const router = useRouter()
+const authStore = useAuthStore()
 
 const form = ref({
   email: '',
   password: '',
-});
+})
 
-const loading = ref(false);
-const error = ref('');
+const loading = ref(false)
+const error = ref('')
 
 const handleLogin = async () => {
-  loading.value = true;
-  error.value = '';
+  loading.value = true
+  error.value = ''
   try {
-    await authStore.login(form.value.email, form.value.password);
-    router.push('/');
+    await authStore.login(form.value.email, form.value.password)
+    router.push('/')
   } catch (err: any) {
-    error.value = err.message || 'خطا در ورود';
+    error.value = err.message || 'Login failed'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 </script>
-
-<style>
-.page {
-  min-height: 100vh;
-  background-color: #f5f7fb;
-}
-
-.main-content {
-  margin-top: 0;
-  padding-top: 2rem;
-}
-</style>
-

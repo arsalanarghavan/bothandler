@@ -9,20 +9,30 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@vueuse/core": "^14.0.0",
     "axios": "^1.7.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-vue-next": "^0.554.0",
     "pinia": "^2.2.6",
+    "radix-vue": "^1.9.17",
+    "reka-ui": "^2.6.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "vue": "^3.5.12",
     "vue-i18n": "^9.14.0",
-    "vue-router": "^4.4.5"
+    "vue-router": "^4.4.5",
+    "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/test-utils": "^2.4.6",
+    "autoprefixer": "^10.4.22",
     "jsdom": "^24.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vitest": "^2.1.5"
   }
 }
-
-

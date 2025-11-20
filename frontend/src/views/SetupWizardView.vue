@@ -1,129 +1,163 @@
 <template>
-  <div class="page">
-    <div class="main-content app-content">
-      <div class="side-app">
-        <div class="main-container container-fluid">
-          <div class="row justify-content-center">
-            <div class="col-xl-8">
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">{{ $t('setup.title') }}</h3>
-                </div>
-                <div class="card-body">
-                  <form class="wizard wizard-tab horizontal" @submit.prevent="submit" id="setup-wizard">
-              <aside class="wizard-content container">
-                <!-- Step 1: Dashboard Info -->
-                <div class="wizard-step active" data-title="اطلاعات داشبورد">
-                  <div class="row">
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.dashboardName') }} <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="form.dashboard_name" required placeholder="نام داشبورد">
-                      </div>
-                    </div>
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.dashboardDomain') }} <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="form.dashboard_domain" required placeholder="dashboard.example.com">
-                        <small class="text-muted">{{ $t('setup.domainHint') }}</small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Step 2: Admin Account -->
-                <div class="wizard-step" data-title="حساب ادمین">
-                  <div class="row">
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.adminEmail') }} <span class="text-danger">*</span></label>
-                        <input type="email" class="form-control" v-model="form.email" required placeholder="admin@example.com">
-                      </div>
-                    </div>
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.adminUsername') }} <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="form.username" required placeholder="نام کاربری">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Step 3: Password -->
-                <div class="wizard-step" data-title="رمز عبور">
-                  <div class="row">
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.password') }} <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" v-model="form.password" required placeholder="حداقل 8 کاراکتر">
-                      </div>
-                    </div>
-                    <div class="col-xl-12">
-                      <div class="mb-3">
-                        <label class="form-label">{{ $t('setup.confirmPassword') }} <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" v-model="form.password_confirmation" required placeholder="تکرار رمز عبور">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Step 4: Confirmation -->
-                <div class="wizard-step" data-title="تایید">
-                  <div class="text-center">
-                    <div class="mb-4">
-                      <i class="ri-checkbox-circle-line text-success" style="font-size: 4rem;"></i>
-                    </div>
-                    <h4>{{ $t('setup.readyToInstall') }}</h4>
-                    <p class="text-muted">{{ $t('setup.confirmMessage') }}</p>
-                    <div class="card mt-4">
-                      <div class="card-body text-start">
-                        <p><strong>{{ $t('setup.dashboardName') }}:</strong> {{ form.dashboard_name }}</p>
-                        <p><strong>{{ $t('setup.dashboardDomain') }}:</strong> {{ form.dashboard_domain }}</p>
-                        <p><strong>{{ $t('setup.adminEmail') }}:</strong> {{ form.email }}</p>
-                        <p><strong>{{ $t('setup.adminUsername') }}:</strong> {{ form.username }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </aside>
-
-              <!-- Wizard Navigation -->
-              <div class="d-flex wizard justify-content-between mt-3 flex-wrap gap-2">
-                <button type="button" class="btn btn-light wizard-prev" @click="prevStep">
-                  <i class="ri-arrow-right-line me-1"></i>{{ $t('setup.previous') }}
-                </button>
-                <button type="button" class="btn btn-primary wizard-next" @click="nextStep" v-if="currentStep < 3">
-                  {{ $t('setup.next') }}<i class="ri-arrow-left-line ms-1"></i>
-                </button>
-                <button type="submit" class="btn btn-primary" v-if="currentStep === 3" :disabled="submitting">
-                  <span v-if="submitting">
-                    <span class="spinner-border spinner-border-sm me-1"></span>{{ $t('setup.installing') }}
-                  </span>
-                  <span v-else>
-                    {{ $t('setup.completeInstallation') }}<i class="ri-check-line ms-1"></i>
-                  </span>
-                </button>
+  <div class="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+    <div class="w-full max-w-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle>Setup Dashboard</CardTitle>
+          <CardDescription>Step {{ currentStep + 1 }} of 4</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form @submit.prevent="handleNext" class="space-y-6">
+            <!-- Step 1: Dashboard Info -->
+            <div v-if="currentStep === 0" class="space-y-4">
+              <div class="space-y-2">
+                <Label for="dashboard_name">Dashboard Name *</Label>
+                <Input 
+                  id="dashboard_name"
+                  v-model="form.dashboard_name" 
+                  placeholder="My Dashboard"
+                  required
+                />
               </div>
-                  </form>
-                </div>
+              <div class="space-y-2">
+                <Label for="dashboard_domain">Dashboard Domain *</Label>
+                <Input 
+                  id="dashboard_domain"
+                  v-model="form.dashboard_domain" 
+                  placeholder="dashboard.example.com"
+                  required
+                />
+                <p class="text-xs text-muted-foreground">Enter your domain name for SSL configuration</p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+
+            <!-- Step 2: Admin Account -->
+            <div v-if="currentStep === 1" class="space-y-4">
+              <div class="space-y-2">
+                <Label for="email">Admin Email *</Label>
+                <Input 
+                  id="email"
+                  v-model="form.email" 
+                  type="email"
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="username">Admin Username *</Label>
+                <Input 
+                  id="username"
+                  v-model="form.username" 
+                  placeholder="admin"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Step 3: Password -->
+            <div v-if="currentStep === 2" class="space-y-4">
+              <div class="space-y-2">
+                <Label for="password">Password *</Label>
+                <Input 
+                  id="password"
+                  v-model="form.password" 
+                  type="password"
+                  placeholder="Minimum 8 characters"
+                  required
+                  minlength="8"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="password_confirmation">Confirm Password *</Label>
+                <Input 
+                  id="password_confirmation"
+                  v-model="form.password_confirmation" 
+                  type="password"
+                  placeholder="Repeat password"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Step 4: Confirmation -->
+            <div v-if="currentStep === 3" class="space-y-4 text-center">
+              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Check class="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold">Ready to Install</h3>
+                <p class="text-sm text-muted-foreground">Please review your information and click Install</p>
+              </div>
+              <Card>
+                <CardContent class="space-y-2 pt-6 text-left">
+                  <div class="flex justify-between">
+                    <span class="text-sm font-medium">Dashboard Name:</span>
+                    <span class="text-sm text-muted-foreground">{{ form.dashboard_name }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-sm font-medium">Domain:</span>
+                    <span class="text-sm text-muted-foreground">{{ form.dashboard_domain }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-sm font-medium">Email:</span>
+                    <span class="text-sm text-muted-foreground">{{ form.email }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-sm font-medium">Username:</span>
+                    <span class="text-sm text-muted-foreground">{{ form.username }}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div v-if="error" class="rounded-lg bg-destructive/15 p-3 text-sm text-destructive">
+              {{ error }}
+            </div>
+          </form>
+        </CardContent>
+        <CardFooter class="flex justify-between">
+          <Button 
+            v-if="currentStep > 0" 
+            @click="prevStep" 
+            variant="outline"
+            :disabled="submitting"
+          >
+            Previous
+          </Button>
+          <div v-else></div>
+          <Button 
+            v-if="currentStep < 3" 
+            @click="nextStep"
+            :disabled="submitting"
+          >
+            Next
+          </Button>
+          <Button 
+            v-else
+            @click="submit"
+            :disabled="submitting"
+          >
+            <span v-if="submitting">Installing...</span>
+            <span v-else>Complete Installation</span>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import axios from 'axios';
-import { useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Check } from 'lucide-vue-next'
 
-const router = useRouter();
-const { t } = useI18n();
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const router = useRouter()
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const form = ref({
   dashboard_name: '',
@@ -132,103 +166,39 @@ const form = ref({
   username: '',
   password: '',
   password_confirmation: '',
-});
+})
 
-const submitting = ref(false);
-const currentStep = ref(0);
+const currentStep = ref(0)
+const submitting = ref(false)
+const error = ref('')
 
 const nextStep = () => {
   if (currentStep.value < 3) {
-    currentStep.value++;
-    updateWizardSteps();
+    currentStep.value++
   }
-};
+}
 
 const prevStep = () => {
   if (currentStep.value > 0) {
-    currentStep.value--;
-    updateWizardSteps();
+    currentStep.value--
   }
-};
-
-const updateWizardSteps = () => {
-  const steps = document.querySelectorAll('.wizard-step');
-  steps.forEach((step, index) => {
-    if (index === currentStep.value) {
-      step.classList.add('active');
-    } else {
-      step.classList.remove('active');
-    }
-  });
-};
+}
 
 const submit = async () => {
   if (form.value.password !== form.value.password_confirmation) {
-    alert(t('setup.passwordMismatch'));
-    return;
+    error.value = 'Passwords do not match'
+    return
   }
 
-  submitting.value = true;
+  submitting.value = true
+  error.value = ''
   try {
-    await axios.post(`${API_BASE}/setup/complete`, form.value);
-    router.push('/login');
-  } catch (error: any) {
-    alert(error.response?.data?.message || t('setup.error'));
+    await axios.post(`${API_BASE}/setup/complete`, form.value)
+    router.push('/login')
+  } catch (err: any) {
+    error.value = err.response?.data?.message || 'Installation failed'
   } finally {
-    submitting.value = false;
+    submitting.value = false
   }
-};
-
-onMounted(() => {
-  updateWizardSteps();
-  
-  // Initialize vanilla-wizard if available
-  if (typeof window !== 'undefined' && (window as any).VanillaWizard) {
-    const wizardElement = document.getElementById('setup-wizard');
-    if (wizardElement) {
-      try {
-        new (window as any).VanillaWizard(wizardElement);
-      } catch (e) {
-        console.warn('VanillaWizard initialization failed:', e);
-      }
-    }
-  }
-  
-  // Also try to trigger form-wizard-init if it exists
-  setTimeout(() => {
-    if (typeof (window as any).formWizardInit === 'function') {
-      (window as any).formWizardInit();
-    }
-  }, 100);
-});
+}
 </script>
-
-<style>
-/* Remove scoped to allow global styles to apply */
-.wizard-step {
-  display: none;
-}
-
-.wizard-step.active {
-  display: block;
-}
-
-.wizard-step[data-title]::before {
-  content: attr(data-title);
-  display: block;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--primary-color);
-}
-
-/* Ensure page has proper background */
-.page {
-  min-height: 100vh;
-  background-color: #f5f7fb;
-}
-
-.main-content {
-  margin-top: 0;
-  padding-top: 2rem;
-}
-</style>
