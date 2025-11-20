@@ -1,7 +1,36 @@
 #!/usr/bin/env bash
 set -e
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Installation directory
+INSTALL_DIR="${INSTALL_DIR:-/opt/bothandler}"
+REPO_URL="https://github.com/arsalanarghavan/bothandler.git"
+BRANCH="${BRANCH:-main}"
+
+echo "========================================="
+echo "Bot Hosting Dashboard Installer"
+echo "========================================="
+echo ""
+
+# Clone or update repository
+if [ -d "$INSTALL_DIR/.git" ]; then
+  echo "Updating existing installation at $INSTALL_DIR..."
+  cd "$INSTALL_DIR"
+  git fetch origin
+  git reset --hard origin/$BRANCH
+else
+  echo "Cloning repository to $INSTALL_DIR..."
+  if [ -d "$INSTALL_DIR" ]; then
+    echo "Directory $INSTALL_DIR exists but is not a git repository."
+    echo "Please remove it or choose a different installation directory."
+    exit 1
+  fi
+  git clone -b $BRANCH "$REPO_URL" "$INSTALL_DIR"
+  cd "$INSTALL_DIR"
+fi
+
+PROJECT_DIR="$INSTALL_DIR"
+echo "Installation directory: $PROJECT_DIR"
+echo ""
 
 echo "Updating system packages..."
 sudo apt-get update -y
