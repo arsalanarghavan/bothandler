@@ -58,7 +58,9 @@ describe('DashboardOverviewView', () => {
       },
     });
 
-    // Wait for async operations
+    // Wait for component to mount and async operations
+    await wrapper.vm.$nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100));
     await wrapper.vm.$nextTick();
     
     expect(wrapper.text()).toContain('Dashboard');

@@ -251,14 +251,13 @@ if [ -z "$SERVER_IP" ]; then
 fi
 
 # Clear progress line and show success (force output even if set -e was enabled)
-echo ""
-echo ""
-echo -e "${GREEN}✓ Installation completed successfully!${NC}"
-echo ""
+# Use printf instead of echo for better compatibility
+printf "\n\n"
+printf "${GREEN}✓ Installation completed successfully!${NC}\n"
+printf "\n"
 
-# Display success message (ensure it always shows - use explicit output redirection)
-{
-cat << EOF
+# Display success message (ensure it always shows - write to stderr)
+cat >&2 << EOF
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║
@@ -305,7 +304,6 @@ cat << EOF
 🎉  Enjoy your Bot Hosting Dashboard!
 
 EOF
-} || true
 
 # Exit successfully
 exit 0
