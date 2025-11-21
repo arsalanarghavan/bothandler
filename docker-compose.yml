@@ -1,142 +1,143 @@
-services:
-  nginx-proxy:
-    image: nginxproxy/nginx-proxy:alpine
-    container_name: nginx-proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - nginx-certs:/etc/nginx/certs
-      - nginx-vhosts:/etc/nginx/vhost.d
-      - nginx-html:/usr/share/nginx/html
-    networks:
-      - proxy
-    restart: unless-stopped
-
-  nginx-proxy-acme:
-    image: nginxproxy/acme-companion
-    container_name: nginx-proxy-acme
-    depends_on:
-      - nginx-proxy
-    environment:
-      NGINX_PROXY_CONTAINER: nginx-proxy
-      ACME_CA_URI: https://acme-v02.api.letsencrypt.org/directory
-      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - nginx-certs:/etc/nginx/certs
-      - nginx-vhosts:/etc/nginx/vhost.d
-      - nginx-html:/usr/share/nginx/html
-    networks:
-      - proxy
-    restart: unless-stopped
-
-  api-gateway:
-    build:
-      context: ./backend/api-gateway
-      dockerfile: Dockerfile
-    env_file:
-      - ./backend/api-gateway/.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${PROJECT_ROOT:-/opt/bothandler}/.env:${PROJECT_ROOT:-/opt/bothandler}/.env:rw
-      - ${PROJECT_ROOT:-/opt/bothandler}/backend/api-gateway/.env:/var/www/html/.env:rw
-      - ${PROJECT_ROOT:-/opt/bothandler}/backend/monitoring-service/.env:${PROJECT_ROOT:-/opt/bothandler}/backend/monitoring-service/.env:rw
-      - ${PROJECT_ROOT:-/opt/bothandler}/backend/bot-manager/.env:${PROJECT_ROOT:-/opt/bothandler}/backend/bot-manager/.env:rw
-    environment:
-      VIRTUAL_HOST: api.${DASHBOARD_DOMAIN:-example.com}
-      LETSENCRYPT_HOST: api.${DASHBOARD_DOMAIN:-example.com}
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
-      VIRTUAL_PORT: 80
-      PROJECT_ROOT: ${PROJECT_ROOT:-/opt/bothandler}
-    depends_on:
-      - nginx-proxy
-    networks:
-      - proxy
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-
-  monitoring-service:
-    build:
-      context: ./backend/monitoring-service
-      dockerfile: Dockerfile
-    env_file:
-      - ./backend/monitoring-service/.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-
-  bot-manager:
-    build:
-      context: ./backend/bot-manager
-      dockerfile: Dockerfile
-    env_file:
-      - ./backend/bot-manager/.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./bots:/var/bots
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: https://api.${DASHBOARD_DOMAIN:-example.com}/api
-        VITE_DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-example.com}
-    environment:
-      VIRTUAL_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
-      LETSENCRYPT_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
-      VIRTUAL_PORT: 80
-    ports:
-      - "8080:80"
-    depends_on:
-      - nginx-proxy
-      - api-gateway
-    networks:
-      - proxy
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-
-networks:
-  proxy:
-    external: false
-  backend:
-    external: false
-
-volumes:
-  nginx-certs:
-  nginx-vhosts:
-  nginx-html:
-
-
+     1|services:
+     2|  nginx-proxy:
+     3|    image: nginxproxy/nginx-proxy:alpine
+     4|    container_name: nginx-proxy
+     5|    ports:
+     6|      - "80:80"
+     7|      - "443:443"
+     8|    volumes:
+     9|      - /var/run/docker.sock:/tmp/docker.sock:ro
+    10|      - nginx-certs:/etc/nginx/certs
+    11|      - nginx-vhosts:/etc/nginx/vhost.d
+    12|      - nginx-html:/usr/share/nginx/html
+    13|    networks:
+    14|      - proxy
+    15|    restart: unless-stopped
+    16|
+    17|  nginx-proxy-acme:
+    18|    image: nginxproxy/acme-companion
+    19|    container_name: nginx-proxy-acme
+    20|    depends_on:
+    21|      - nginx-proxy
+    22|    environment:
+    23|      NGINX_PROXY_CONTAINER: nginx-proxy
+    24|      ACME_CA_URI: https://acme-v02.api.letsencrypt.org/directory
+    25|      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+    26|    volumes:
+    27|      - /var/run/docker.sock:/var/run/docker.sock:ro
+    28|      - nginx-certs:/etc/nginx/certs
+    29|      - nginx-vhosts:/etc/nginx/vhost.d
+    30|      - nginx-html:/usr/share/nginx/html
+    31|    networks:
+    32|      - proxy
+    33|    restart: unless-stopped
+    34|
+    35|  api-gateway:
+    36|    build:
+    37|      context: ./backend/api-gateway
+    38|      dockerfile: Dockerfile
+    39|    env_file:
+    40|      - ./backend/api-gateway/.env
+    41|    volumes:
+    42|      - /var/run/docker.sock:/var/run/docker.sock:rw
+    43|      - ${PROJECT_ROOT:-/opt/bothandler}/.env:${PROJECT_ROOT:-/opt/bothandler}/.env:rw
+    44|      - ${PROJECT_ROOT:-/opt/bothandler}/backend/api-gateway/.env:/var/www/html/.env:rw
+    45|      - ${PROJECT_ROOT:-/opt/bothandler}/backend/monitoring-service/.env:${PROJECT_ROOT:-/opt/bothandler}/backend/monitoring-service/.env:rw
+    46|      - ${PROJECT_ROOT:-/opt/bothandler}/backend/bot-manager/.env:${PROJECT_ROOT:-/opt/bothandler}/backend/bot-manager/.env:rw
+    47|    environment:
+    48|      VIRTUAL_HOST: api.${DASHBOARD_DOMAIN:-example.com}
+    49|      LETSENCRYPT_HOST: api.${DASHBOARD_DOMAIN:-example.com}
+    50|      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+    51|      VIRTUAL_PORT: 80
+    52|      PROJECT_ROOT: ${PROJECT_ROOT:-/opt/bothandler}
+    53|    depends_on:
+    54|      - nginx-proxy
+    55|    networks:
+    56|      - proxy
+    57|      - backend
+    58|    healthcheck:
+    59|      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
+    60|      interval: 30s
+    61|      timeout: 10s
+    62|      retries: 3
+    63|      start_period: 40s
+    64|    restart: unless-stopped
+    65|
+    66|  monitoring-service:
+    67|    build:
+    68|      context: ./backend/monitoring-service
+    69|      dockerfile: Dockerfile
+    70|    env_file:
+    71|      - ./backend/monitoring-service/.env
+    72|    volumes:
+    73|      - /var/run/docker.sock:/var/run/docker.sock:ro
+    74|    networks:
+    75|      - backend
+    76|    healthcheck:
+    77|      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
+    78|      interval: 30s
+    79|      timeout: 10s
+    80|      retries: 3
+    81|      start_period: 40s
+    82|    restart: unless-stopped
+    83|
+    84|  bot-manager:
+    85|    build:
+    86|      context: ./backend/bot-manager
+    87|      dockerfile: Dockerfile
+    88|    env_file:
+    89|      - ./backend/bot-manager/.env
+    90|    volumes:
+    91|      - /var/run/docker.sock:/var/run/docker.sock
+    92|      - ./bots:/var/bots
+    93|    networks:
+    94|      - backend
+    95|    healthcheck:
+    96|      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/up"]
+    97|      interval: 30s
+    98|      timeout: 10s
+    99|      retries: 3
+   100|      start_period: 40s
+   101|    restart: unless-stopped
+   102|
+   103|  frontend:
+   104|    build:
+   105|      context: ./frontend
+   106|      dockerfile: Dockerfile
+   107|      args:
+   108|        VITE_API_BASE_URL: https://api.${DASHBOARD_DOMAIN:-example.com}/api
+   109|        VITE_DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-example.com}
+   110|    environment:
+   111|      VIRTUAL_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
+   112|      LETSENCRYPT_HOST: ${DASHBOARD_DOMAIN:-dashboard.example.com}
+   113|      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+   114|      VIRTUAL_PORT: 80
+   115|    ports:
+   116|      - "8080:80"
+   117|    depends_on:
+   118|      - nginx-proxy
+   119|      - api-gateway
+   120|    networks:
+   121|      - proxy
+   122|      - backend
+   123|    healthcheck:
+   124|      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+   125|      interval: 30s
+   126|      timeout: 10s
+   127|      retries: 3
+   128|      start_period: 40s
+   129|    restart: unless-stopped
+   130|
+   131|networks:
+   132|  proxy:
+   133|    external: false
+   134|  backend:
+   135|    external: false
+   136|
+   137|volumes:
+   138|  nginx-certs:
+   139|  nginx-vhosts:
+   140|  nginx-html:
+   141|
+   142|
+   143|
