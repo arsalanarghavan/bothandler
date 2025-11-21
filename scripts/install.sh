@@ -28,41 +28,65 @@ show_progress() {
            "$message"
 }
 
-# Helpers for ensuring APP_KEY is set inside each service
-has_app_key() {
+# Helpers for generating APP_KEY if missing
+generate_base64_key() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 32 | tr -d '\n'
+        return
+    fi
+
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - <<'PY'
+import base64, os
+print(base64.b64encode(os.urandom(32)).decode())
+PY
+        return
+    fi
+
+    if command -v python >/dev/null 2>&1; then
+        python - <<'PY'
+import base64, os
+print(base64.b64encode(os.urandom(32)).decode())
+PY
+        return
+    fi
+
+    if [ -r /dev/urandom ]; then
+        head -c 32 /dev/urandom | base64
+        return
+    fi
+
+    # Last resort: repeat a fixed string (not ideal but prevents blank APP_KEY)
+    echo "base64:$(printf '0%.0s' {1..32})"
+}
+
+ensure_env_app_key() {
     local env_file="$1"
 
     if [ ! -f "$env_file" ]; then
-        return 1
+        return
     fi
 
-    local line
-    line="$(grep -m1 '^APP_KEY=' "$env_file" 2>/dev/null || true)"
-    if [ -z "$line" ]; then
-        return 1
+    local existing
+    existing="$(grep -m1 '^APP_KEY=' "$env_file" 2>/dev/null || true)"
+
+    if [ -n "$existing" ]; then
+        local value="${existing#APP_KEY=}"
+        value="${value//\"/}"
+        value="${value//\'/}"
+        value="${value//[[:space:]]/}"
+        [ -n "$value" ] && return
     fi
 
-    local value="${line#APP_KEY=}"
-    value="${value//\"/}"
-    value="${value//\'/}"
-    value="${value//[[:space:]]/}"
+    local new_key
+    new_key="$(generate_base64_key)"
+    new_key="base64:${new_key#base64:}"
 
-    [ -n "$value" ]
-}
-
-ensure_app_keys() {
-    for service in api-gateway monitoring-service bot-manager; do
-        local env_file="$PROJECT_DIR/backend/$service/.env"
-        if has_app_key "$env_file"; then
-            continue
-        fi
-
-        # If the APP_KEY is missing, try to generate it inside the running container.
-        echo -e "${YELLOW}Generating APP_KEY for $service...${NC}" >&2
-        if ! $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T "$service" php artisan key:generate --force --no-interaction >/dev/null 2>&1; then
-            echo -e "${YELLOW}Warning: Unable to generate APP_KEY for $service.${NC}" >&2
-        fi
-    done
+    if [ -n "$existing" ]; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=${new_key}|" "$env_file"
+    else
+        echo "APP_KEY=${new_key}" >> "$env_file"
+    fi
 }
 
 # Clear screen and show header (skip if running via curl | bash)
@@ -161,6 +185,10 @@ for service in api-gateway monitoring-service bot-manager; do
   fi
 done
 
+for service in api-gateway monitoring-service bot-manager; do
+  ensure_env_app_key "$PROJECT_DIR/backend/$service/.env"
+done
+
 if [ ! -f "frontend/.env" ] && [ -f "frontend/.env.example" ]; then
   cp "frontend/.env.example" "frontend/.env"
 fi
@@ -231,9 +259,6 @@ done
 # Run migrations (retry if needed)
 # Temporarily disable set -e for migrations
 set +e
-
-# Ensure each service has an APP_KEY before running migrations so Laravel boots cleanly.
-ensure_app_keys
 
 echo -e "${YELLOW}Running database migrations...${NC}"
 MIGRATION_FAILED=0
