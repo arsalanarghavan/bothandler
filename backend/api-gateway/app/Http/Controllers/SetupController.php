@@ -95,12 +95,14 @@ class SetupController extends Controller
 
             // Trigger restarts after response is sent
             $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
-            app()->terminating(function () use ($projectRoot) {
-                if (function_exists('fastcgi_finish_request')) {
-                    fastcgi_finish_request();
-                }
-                $this->triggerDockerRestarts($projectRoot);
-            });
+            // Only use docker compose (no hyphen)
+            $dockerComposeCmd = 'docker compose'; 
+            
+            // Dispatch as a background job or use shell_exec with nohup to ensure it runs detached
+            // We cannot rely on app()->terminating in some FPM configurations if the process is killed too early
+            // So we will execute the restart command in background immediately but with a small delay
+            
+            $this->triggerDockerRestartsInBackground($projectRoot, $dockerComposeCmd);
 
             return response()->json([
                 'status' => 'ok',
@@ -152,50 +154,37 @@ class SetupController extends Controller
         $this->updateEnvFile($botManagerEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
     }
 
-    protected function triggerDockerRestarts(string $projectRoot): void
+    protected function triggerDockerRestartsInBackground(string $projectRoot, string $dockerComposeCmd): void
     {
-        // Trigger docker operations using docker socket
-        try {
-            $dockerSocket = '/var/run/docker.sock';
-            
-            if (file_exists($dockerSocket) && is_readable($dockerSocket)) {
-                $dockerComposeFile = $projectRoot . '/docker-compose.yml';
-                
-                // Rebuild frontend with new domain (in background)
-                \Log::info('Rebuilding frontend with new domain...');
-                $rebuildCommand = "cd " . escapeshellarg($projectRoot) . " && docker-compose -f " . escapeshellarg($dockerComposeFile) . " build frontend > /dev/null 2>&1 && docker-compose -f " . escapeshellarg($dockerComposeFile) . " up -d frontend > /dev/null 2>&1 &";
-                shell_exec($rebuildCommand);
-                
-                // Restart other containers
-                $containersToRestart = ['api-gateway', 'monitoring-service', 'bot-manager'];
-                foreach ($containersToRestart as $container) {
-                    // Find container by name pattern using docker ps
-                    $output = shell_exec("docker ps --format '{{.Names}}' 2>&1");
-                    if ($output) {
-                        $lines = explode("\n", trim($output));
-                        foreach ($lines as $line) {
-                            $line = trim($line);
-                            if (empty($line)) {
-                                continue;
-                            }
-                            // Match container names like: bothandler_api-gateway_1, bothandler-api-gateway-1, api-gateway
-                            if (preg_match("/bothandler[_-]?{$container}[_-]?\d*|{$container}/i", $line)) {
-                                $containerName = escapeshellarg($line);
-                                // Run restart in background
-                                shell_exec("docker restart {$containerName} > /dev/null 2>&1 &");
-                                \Log::info("Restarting container: {$line}");
-                                break;
-                            }
-                        }
-                    }
-                }
-            } else {
-                \Log::warning('Docker socket not found or not readable at ' . $dockerSocket);
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Failed to restart/rebuild containers: ' . $e->getMessage());
-            // Don't fail setup if restart fails
+        $dockerSocket = '/var/run/docker.sock';
+        
+        if (!file_exists($dockerSocket) || !is_readable($dockerSocket)) {
+            \Log::warning('Docker socket not found or not readable at ' . $dockerSocket);
+            return;
         }
+
+        $dockerComposeFile = $projectRoot . '/docker-compose.yml';
+        
+        // We'll create a small shell script to handle the restarts and run it in background
+        // This ensures the PHP process can return response immediately
+        
+        $script = "#!/bin/bash
+cd " . escapeshellarg($projectRoot) . "
+sleep 2
+$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " build frontend
+$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " up -d frontend
+$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " restart api-gateway monitoring-service bot-manager
+";
+
+        $scriptPath = storage_path('app/restart_services.sh');
+        file_put_contents($scriptPath, $script);
+        chmod($scriptPath, 0755);
+
+        // Execute the script in background with nohup
+        $command = "nohup " . escapeshellarg($scriptPath) . " > /dev/null 2>&1 &";
+        shell_exec($command);
+        
+        \Log::info('Triggered background restart script: ' . $command);
     }
 
     protected function updateEnvFile(string $path, string $key, string $value): void
