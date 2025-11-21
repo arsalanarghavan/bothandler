@@ -21,6 +21,10 @@ class SetupController extends Controller
 
     public function complete(Request $request): JsonResponse
     {
+        // Prevent script termination
+        ignore_user_abort(true);
+        set_time_limit(0);
+
         try {
             if (User::query()->count() > 0) {
                 return response()->json(['message' => 'Already installed'], 400);
@@ -90,24 +94,34 @@ class SetupController extends Controller
                 $this->updateEnvFiles($validated['dashboard_domain'], $validated['email']);
             } catch (\Exception $e) {
                 \Log::warning('Failed to update env files: ' . $e->getMessage());
-                // Don't fail setup if env update fails, just log it
             }
 
-            // Trigger restarts after response is sent
-            $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
-            // Only use docker compose (no hyphen)
-            $dockerComposeCmd = 'docker compose'; 
-            
-            // Dispatch as a background job or use shell_exec with nohup to ensure it runs detached
-            // We cannot rely on app()->terminating in some FPM configurations if the process is killed too early
-            // So we will execute the restart command in background immediately but with a small delay
-            
-            $this->triggerDockerRestartsInBackground($projectRoot, $dockerComposeCmd);
-
-            return response()->json([
+            $response = response()->json([
                 'status' => 'ok',
                 'message' => 'Setup complete. Services are restarting to apply new configurations.',
             ]);
+
+            // Send response immediately and close connection
+            if (function_exists('fastcgi_finish_request')) {
+                $response->send();
+                fastcgi_finish_request();
+            }
+
+            // Background operations
+            $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
+            $dockerComposeCmd = 'sudo docker compose'; // Use sudo
+            
+            $this->triggerDockerRestartsInBackground($projectRoot, $dockerComposeCmd);
+
+            // For non-FPM environments
+            if (!function_exists('fastcgi_finish_request')) {
+                return $response;
+            }
+            
+            // Keep script alive slightly longer
+            sleep(2);
+            return $response;
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'message' => 'Validation failed',
@@ -130,27 +144,19 @@ class SetupController extends Controller
 
     protected function updateEnvFiles(string $domain, string $email): void
     {
-        // Paths are now mounted as volumes in docker-compose.yml
         $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
         $rootEnvPath = $projectRoot . '/.env';
-        $apiGatewayEnvPath = base_path('.env'); // Mounted as /var/www/html/.env
+        $apiGatewayEnvPath = base_path('.env');
         $monitoringServiceEnvPath = $projectRoot . '/backend/monitoring-service/.env';
         $botManagerEnvPath = $projectRoot . '/backend/bot-manager/.env';
 
         $internalApiKey = \Illuminate\Support\Str::random(64);
 
-        // Update root .env
         $this->updateEnvFile($rootEnvPath, 'DASHBOARD_DOMAIN', $domain);
         $this->updateEnvFile($rootEnvPath, 'LETSENCRYPT_EMAIL', $email);
-
-        // Update api-gateway .env
         $this->updateEnvFile($apiGatewayEnvPath, 'APP_URL', 'https://api.' . $domain);
         $this->updateEnvFile($apiGatewayEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
-
-        // Update monitoring-service .env
         $this->updateEnvFile($monitoringServiceEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
-
-        // Update bot-manager .env
         $this->updateEnvFile($botManagerEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
     }
 
@@ -158,31 +164,33 @@ class SetupController extends Controller
     {
         $dockerSocket = '/var/run/docker.sock';
         
-        if (!file_exists($dockerSocket) || !is_readable($dockerSocket)) {
-            \Log::warning('Docker socket not found or not readable at ' . $dockerSocket);
-            return;
+        if (!file_exists($dockerSocket)) {
+             \Log::warning('Docker socket not found at ' . $dockerSocket);
         }
 
         $dockerComposeFile = $projectRoot . '/docker-compose.yml';
         
-        // We'll create a small shell script to handle the restarts and run it in background
-        // This ensures the PHP process can return response immediately
-        
         $script = "#!/bin/bash
+export PATH=\$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 cd " . escapeshellarg($projectRoot) . "
-sleep 2
-$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " build frontend
-$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " up -d frontend
-$dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " restart api-gateway monitoring-service bot-manager
+echo \"[\$(date)] Starting background restart script...\"
+sleep 5
+echo \"[\$(date)] Rebuilding frontend...\"
+" . $dockerComposeCmd . " -f " . escapeshellarg($dockerComposeFile) . " build frontend
+echo \"[\$(date)] Up frontend...\"
+" . $dockerComposeCmd . " -f " . escapeshellarg($dockerComposeFile) . " up -d frontend
+echo \"[\$(date)] Restarting services...\"
+" . $dockerComposeCmd . " -f " . escapeshellarg($dockerComposeFile) . " restart api-gateway monitoring-service bot-manager
+echo \"[\$(date)] Done.\"
 ";
 
         $scriptPath = storage_path('app/restart_services.sh');
         file_put_contents($scriptPath, $script);
         chmod($scriptPath, 0755);
 
-        // Execute the script in background with nohup
-        $command = "nohup " . escapeshellarg($scriptPath) . " > /dev/null 2>&1 &";
-        shell_exec($command);
+        $logFile = storage_path('logs/restart.log');
+        $command = "nohup " . escapeshellarg($scriptPath) . " > " . escapeshellarg($logFile) . " 2>&1 &";
+        exec($command);
         
         \Log::info('Triggered background restart script: ' . $command);
     }
@@ -195,18 +203,12 @@ $dockerComposeCmd -f " . escapeshellarg($dockerComposeFile) . " restart api-gate
             }
 
             $contents = file_get_contents($path);
-            
-            // Escape special regex characters in key
             $escapedKey = preg_quote($key, '/');
-            
-            // Match key=value (with or without quotes, with optional whitespace)
             $pattern = "/^{$escapedKey}\s*=\s*.*$/m";
             $replacement = "{$key}=\"{$value}\"";
-            
             $newContents = preg_replace($pattern, $replacement, $contents, 1, $count);
 
             if ($count === 0) {
-                // Key not found, append it
                 $newContents = rtrim($contents) . "\n{$key}=\"{$value}\"\n";
             }
 

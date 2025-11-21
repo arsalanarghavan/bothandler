@@ -12,7 +12,14 @@ RUN apk add --no-cache \
     libxml2-dev \
     oniguruma-dev \
     nginx \
-    supervisor
+    supervisor \
+    docker-cli \
+    docker-cli-compose \
+    sudo
+
+# Configure sudo for www-data
+RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/bin/docker" > /etc/sudoers.d/www-data \
+    && chmod 0440 /etc/sudoers.d/www-data
 
 # Install PHP extensions
 RUN docker-php-ext-install \
