@@ -194,7 +194,8 @@ const submit = async () => {
   submitting.value = true
   error.value = ''
   try {
-    const response = await apiClient.post('/setup/complete', form.value)
+    // Increase timeout to 2 minutes for installation as it involves container restarts
+    const response = await apiClient.post('/setup/complete', form.value, { timeout: 120000 })
     console.log('Setup response:', response.data)
     
     // Update installation status in store and localStorage
