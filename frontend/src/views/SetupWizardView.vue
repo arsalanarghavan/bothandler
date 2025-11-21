@@ -80,7 +80,7 @@
             </div>
 
             <!-- Step 4: Confirmation -->
-            <div v-if="currentStep === 3" class="space-y-4 text-center">
+            <div v-if="currentStep === 3 && !submitting" class="space-y-4 text-center">
               <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Check class="h-8 w-8 text-primary" />
               </div>
@@ -108,6 +108,55 @@
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            <!-- Installation Progress -->
+            <div v-if="submitting" class="space-y-6 text-center py-4">
+              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
+                <Loader2 class="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold">{{ progressTitle }}</h3>
+                <p class="text-sm text-muted-foreground">{{ progressMessage }}</p>
+              </div>
+              
+              <div class="space-y-2">
+                <div class="h-2 w-full rounded-full bg-secondary">
+                  <div 
+                    class="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                    :style="{ width: `${progress}%` }"
+                  ></div>
+                </div>
+                <p class="text-xs text-right text-muted-foreground">{{ progress }}%</p>
+              </div>
+
+              <div class="text-xs text-left space-y-1 text-muted-foreground border rounded p-3 bg-muted/50">
+                <div class="flex items-center gap-2">
+                  <Check v-if="progress >= 20" class="h-3 w-3 text-green-500" />
+                  <Loader2 v-else-if="progress > 0" class="h-3 w-3 animate-spin" />
+                  <span :class="{ 'text-foreground': progress > 0 }">Validating configuration...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Check v-if="progress >= 40" class="h-3 w-3 text-green-500" />
+                  <Loader2 v-else-if="progress >= 20" class="h-3 w-3 animate-spin" />
+                  <span :class="{ 'text-foreground': progress >= 20 }">Creating admin user & settings...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Check v-if="progress >= 60" class="h-3 w-3 text-green-500" />
+                  <Loader2 v-else-if="progress >= 40" class="h-3 w-3 animate-spin" />
+                  <span :class="{ 'text-foreground': progress >= 40 }">Configuring environment & SSL...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Check v-if="progress >= 90" class="h-3 w-3 text-green-500" />
+                  <Loader2 v-else-if="progress >= 60" class="h-3 w-3 animate-spin" />
+                  <span :class="{ 'text-foreground': progress >= 60 }">Rebuilding containers (This takes a few minutes)...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Check v-if="progress >= 100" class="h-3 w-3 text-green-500" />
+                  <Loader2 v-else-if="progress >= 90" class="h-3 w-3 animate-spin" />
+                  <span :class="{ 'text-foreground': progress >= 90 }">Finalizing setup...</span>
+                </div>
+              </div>
             </div>
 
             <div v-if="error" class="rounded-lg bg-destructive/15 p-3 text-sm text-destructive">
@@ -147,14 +196,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import apiClient from '@/lib/api'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Check } from 'lucide-vue-next'
+import { Check, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -172,6 +221,57 @@ const form = ref({
 const currentStep = ref(0)
 const submitting = ref(false)
 const error = ref('')
+const progress = ref(0)
+const progressTitle = ref('Installing...')
+const progressMessage = ref('Please wait while we configure your dashboard.')
+
+let progressInterval: any = null
+
+const startProgress = () => {
+  progress.value = 5
+  progressInterval = setInterval(() => {
+    if (progress.value < 60) {
+      // Fast progress for first phase (API call)
+      progress.value += Math.random() * 5
+    } else if (progress.value < 90) {
+      // Slower progress for restart phase
+      progress.value += Math.random() * 0.5
+    }
+    
+    // Update messages based on progress
+    if (progress.value < 20) {
+      progressTitle.value = 'Validating...'
+      progressMessage.value = 'Checking configuration and database connection.'
+    } else if (progress.value < 40) {
+      progressTitle.value = 'Creating User...'
+      progressMessage.value = 'Setting up admin account and preferences.'
+    } else if (progress.value < 60) {
+      progressTitle.value = 'Configuring...'
+      progressMessage.value = 'Updating environment files and SSL settings.'
+    } else {
+      progressTitle.value = 'Restarting Services...'
+      progressMessage.value = 'Rebuilding containers. This process may take several minutes.'
+    }
+
+    if (progress.value > 95) {
+       progress.value = 95
+    }
+    
+    // Round to 1 decimal
+    progress.value = Math.round(progress.value * 10) / 10
+  }, 500)
+}
+
+const stopProgress = () => {
+  if (progressInterval) {
+    clearInterval(progressInterval)
+    progressInterval = null
+  }
+}
+
+onUnmounted(() => {
+  stopProgress()
+})
 
 const nextStep = () => {
   if (currentStep.value < 3) {
@@ -193,20 +293,39 @@ const submit = async () => {
 
   submitting.value = true
   error.value = ''
+  startProgress()
+
   try {
-    // Increase timeout to 2 minutes for installation as it involves container restarts
-    const response = await apiClient.post('/setup/complete', form.value, { timeout: 120000 })
+    // Step 1: Send configuration to backend
+    // Increase timeout to 5 minutes just in case
+    const response = await apiClient.post('/setup/complete', form.value, { timeout: 300000 })
     console.log('Setup response:', response.data)
+    
+    // Step 2: Wait for services to restart
+    // Jump to 60% as backend work is done, now waiting for restart
+    progress.value = 60
+    
+    // Poll for health check or wait a fixed time
+    // Since domain might change, simple polling might fail due to DNS/CORS
+    // We'll just simulate the wait for now and trust the backend restart script
     
     // Update installation status in store and localStorage
     authStore.isInstalled = true
     localStorage.setItem('installation_status', JSON.stringify(true))
     
-    // Show success message briefly before redirect
+    // Let the progress bar finish to 100%
+    progress.value = 100
+    progressTitle.value = 'Installation Complete!'
+    progressMessage.value = 'Redirecting to login page...'
+    
+    stopProgress()
+    
     setTimeout(() => {
       router.push('/login')
-    }, 500)
+    }, 2000)
+
   } catch (err: any) {
+    stopProgress()
     console.error('Setup error:', err)
     
     // Show detailed error message
@@ -216,14 +335,15 @@ const submit = async () => {
       // Validation errors
       const errors = Object.values(err.data.errors).flat()
       error.value = errors.join(', ')
+      submitting.value = false // Allow retry
     } else if (err.message) {
       // Error message from interceptor
       error.value = err.message
+      submitting.value = false
     } else {
       error.value = 'Installation failed. Please check server logs and browser console.'
+      submitting.value = false
     }
-  } finally {
-    submitting.value = false
   }
 }
 </script>
