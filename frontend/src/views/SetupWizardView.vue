@@ -210,7 +210,9 @@ const submit = async () => {
     console.error('Setup error:', err)
     
     // Show detailed error message
-    if (err.data?.errors) {
+    if (err.code === 'ECONNABORTED') {
+       error.value = 'Installation is taking longer than expected. This is normal as the system is rebuilding containers with your new domain settings. Please wait a few minutes and then refresh the page.'
+    } else if (err.data?.errors) {
       // Validation errors
       const errors = Object.values(err.data.errors).flat()
       error.value = errors.join(', ')
