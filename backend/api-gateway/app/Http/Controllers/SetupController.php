@@ -93,6 +93,15 @@ class SetupController extends Controller
                 // Don't fail setup if env update fails, just log it
             }
 
+            // Trigger restarts after response is sent
+            $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
+            app()->terminating(function () use ($projectRoot) {
+                if (function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                }
+                $this->triggerDockerRestarts($projectRoot);
+            });
+
             return response()->json([
                 'status' => 'ok',
                 'message' => 'Setup complete. Services are restarting to apply new configurations.',
@@ -141,11 +150,13 @@ class SetupController extends Controller
 
         // Update bot-manager .env
         $this->updateEnvFile($botManagerEnvPath, 'INTERNAL_API_KEY', $internalApiKey);
+    }
 
+    protected function triggerDockerRestarts(string $projectRoot): void
+    {
         // Trigger docker operations using docker socket
         try {
             $dockerSocket = '/var/run/docker.sock';
-            $projectRoot = env('PROJECT_ROOT', '/opt/bothandler');
             
             if (file_exists($dockerSocket) && is_readable($dockerSocket)) {
                 $dockerComposeFile = $projectRoot . '/docker-compose.yml';
@@ -217,5 +228,3 @@ class SetupController extends Controller
         }
     }
 }
-
-
