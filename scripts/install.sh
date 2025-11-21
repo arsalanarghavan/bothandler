@@ -28,6 +28,43 @@ show_progress() {
            "$message"
 }
 
+# Helpers for ensuring APP_KEY is set inside each service
+has_app_key() {
+    local env_file="$1"
+
+    if [ ! -f "$env_file" ]; then
+        return 1
+    fi
+
+    local line
+    line="$(grep -m1 '^APP_KEY=' "$env_file" 2>/dev/null || true)"
+    if [ -z "$line" ]; then
+        return 1
+    fi
+
+    local value="${line#APP_KEY=}"
+    value="${value//\"/}"
+    value="${value//\'/}"
+    value="${value//[[:space:]]/}"
+
+    [ -n "$value" ]
+}
+
+ensure_app_keys() {
+    for service in api-gateway monitoring-service bot-manager; do
+        local env_file="$PROJECT_DIR/backend/$service/.env"
+        if has_app_key "$env_file"; then
+            continue
+        fi
+
+        # If the APP_KEY is missing, try to generate it inside the running container.
+        echo -e "${YELLOW}Generating APP_KEY for $service...${NC}" >&2
+        if ! $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T "$service" php artisan key:generate --force --no-interaction >/dev/null 2>&1; then
+            echo -e "${YELLOW}Warning: Unable to generate APP_KEY for $service.${NC}" >&2
+        fi
+    done
+}
+
 # Clear screen and show header (skip if running via curl | bash)
 [ -t 0 ] && clear || true
 cat << "EOF"
@@ -192,11 +229,14 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
 done
 
 # Run migrations (retry if needed)
-echo -e "${YELLOW}Running database migrations...${NC}"
-MIGRATION_FAILED=0
-
 # Temporarily disable set -e for migrations
 set +e
+
+# Ensure each service has an APP_KEY before running migrations so Laravel boots cleanly.
+ensure_app_keys
+
+echo -e "${YELLOW}Running database migrations...${NC}"
+MIGRATION_FAILED=0
 
 # Run migrations for api-gateway
 echo -e "${YELLOW}Running api-gateway migrations...${NC}" >&2
