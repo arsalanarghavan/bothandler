@@ -199,15 +199,21 @@ MIGRATION_FAILED=0
 set +e
 
 # Run migrations for api-gateway
+echo -e "${YELLOW}Running api-gateway migrations...${NC}" >&2
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1; then
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1)
+    MIGRATION_EXIT=$?
+    if [ $MIGRATION_EXIT -eq 0 ]; then
+        echo "$MIGRATION_OUTPUT" >&2
         echo -e "${GREEN}✓ api-gateway migrations completed${NC}" >&2
         break
     else
         if [ $i -eq 3 ]; then
             MIGRATION_FAILED=1
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Warning: api-gateway migrations failed after 3 attempts${NC}" >&2
         else
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Retrying api-gateway migrations (attempt $i/3)...${NC}" >&2
             sleep 5
         fi
@@ -215,15 +221,21 @@ for i in 1 2 3; do
 done
 
 # Run migrations for monitoring-service
+echo -e "${YELLOW}Running monitoring-service migrations...${NC}" >&2
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1; then
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1)
+    MIGRATION_EXIT=$?
+    if [ $MIGRATION_EXIT -eq 0 ]; then
+        echo "$MIGRATION_OUTPUT" >&2
         echo -e "${GREEN}✓ monitoring-service migrations completed${NC}" >&2
         break
     else
         if [ $i -eq 3 ]; then
             MIGRATION_FAILED=1
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Warning: monitoring-service migrations failed after 3 attempts${NC}" >&2
         else
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Retrying monitoring-service migrations (attempt $i/3)...${NC}" >&2
             sleep 5
         fi
@@ -231,15 +243,21 @@ for i in 1 2 3; do
 done
 
 # Run migrations for bot-manager
+echo -e "${YELLOW}Running bot-manager migrations...${NC}" >&2
 for i in 1 2 3; do
-    if $DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1; then
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1)
+    MIGRATION_EXIT=$?
+    if [ $MIGRATION_EXIT -eq 0 ]; then
+        echo "$MIGRATION_OUTPUT" >&2
         echo -e "${GREEN}✓ bot-manager migrations completed${NC}" >&2
         break
     else
         if [ $i -eq 3 ]; then
             MIGRATION_FAILED=1
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Warning: bot-manager migrations failed after 3 attempts${NC}" >&2
         else
+            echo "$MIGRATION_OUTPUT" >&2
             echo -e "${YELLOW}Retrying bot-manager migrations (attempt $i/3)...${NC}" >&2
             sleep 5
         fi
@@ -262,16 +280,17 @@ if [ -z "$SERVER_IP" ]; then
   SERVER_IP="$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'YOUR_SERVER_IP')"
 fi
 
-# Clear progress line and show success (force output even if set -e was enabled)
-# Redirect all output to stderr to ensure visibility (stderr is unbuffered)
-exec >&2
+# Force flush any buffered output
+sync
 
-printf "\n\n"
-printf "${GREEN}✓ Installation completed successfully!${NC}\n"
-printf "\n"
+# Clear progress line and show success (force output even if set -e was enabled)
+# Use explicit stderr redirection for all output
+printf "\n\n" >&2
+printf "${GREEN}✓ Installation completed successfully!${NC}\n" >&2
+printf "\n" >&2
 
 # Display success message (ensure it always shows - write to stderr)
-cat << EOF
+cat >&2 << EOF
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║          ✅  INSTALLATION COMPLETED SUCCESSFULLY! ✅         ║
