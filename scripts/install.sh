@@ -266,7 +266,7 @@ MIGRATION_FAILED=0
 # Run migrations for api-gateway
 echo -e "${YELLOW}Running api-gateway migrations...${NC}" >&2
 for i in 1 2 3; do
-    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1)
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T api-gateway php artisan migrate --force 2>&1 < /dev/null)
     MIGRATION_EXIT=$?
     if [ $MIGRATION_EXIT -eq 0 ]; then
         echo "$MIGRATION_OUTPUT" >&2
@@ -288,7 +288,7 @@ done
 # Run migrations for monitoring-service
 echo -e "${YELLOW}Running monitoring-service migrations...${NC}" >&2
 for i in 1 2 3; do
-    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1)
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T monitoring-service php artisan migrate --force 2>&1 < /dev/null)
     MIGRATION_EXIT=$?
     if [ $MIGRATION_EXIT -eq 0 ]; then
         echo "$MIGRATION_OUTPUT" >&2
@@ -310,7 +310,7 @@ done
 # Run migrations for bot-manager
 echo -e "${YELLOW}Running bot-manager migrations...${NC}" >&2
 for i in 1 2 3; do
-    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1)
+    MIGRATION_OUTPUT=$($DOCKER_COMPOSE_CMD -f "$PROJECT_DIR/docker-compose.yml" exec -T bot-manager php artisan migrate --force 2>&1 < /dev/null)
     MIGRATION_EXIT=$?
     if [ $MIGRATION_EXIT -eq 0 ]; then
         echo "$MIGRATION_OUTPUT" >&2
